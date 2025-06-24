@@ -1,17 +1,12 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.3'
-	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.springframework.boot' version '3.2.0'  // 명시적인 버전 지정
+	id 'io.spring.dependency-management' version '1.1.4'
 }
 
-group = 'com.factory'
+group = 'com.smartFactory'
 version = '0.0.1-SNAPSHOT'
-
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
-}
+sourceCompatibility = '17'  // Java 17 사용
 
 configurations {
 	compileOnly {
@@ -24,6 +19,7 @@ repositories {
 }
 
 dependencies {
+	// Spring Boot Starters
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -33,15 +29,33 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	// Spring Integration
 	implementation 'org.springframework.integration:spring-integration-http'
 	implementation 'org.springframework.integration:spring-integration-jpa'
 	implementation 'org.springframework.integration:spring-integration-stomp'
 	implementation 'org.springframework.integration:spring-integration-websocket'
+
+	// Security
 	implementation 'org.springframework.security:spring-security-messaging'
+
+	// JPA (Spring Boot 3.x는 jakarta.persistence 사용)
+	implementation 'jakarta.persistence:jakarta.persistence-api:3.1.0'
+
+	// OpenAPI (Swagger) Documentation
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+	// Lombok
 	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// Database
+	runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
+
+	// Development
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.batch:spring-batch-test'
 	testImplementation 'org.springframework.integration:spring-integration-test'
