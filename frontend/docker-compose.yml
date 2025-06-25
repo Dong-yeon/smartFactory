@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-factory-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    # 개발 모드로 실행하고 싶을 때 주석 해제
+    # command: sh -c "npm install && npm run dev"
+    # ports:
+    #   - "5173:5173"
+    # volumes:
+    #   - ./:/app
+    #   - /app/node_modules
+    #   - /app/dist
+    #   - /app/.vite
+    # environment:
+    #   - NODE_ENV=development
+    #   - CHOKIDAR_USEPOLLING=true
+    # tty: true
+    # stdin_open: true

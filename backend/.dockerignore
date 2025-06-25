@@ -1,0 +1,14 @@
+.gradle
+build
+.gradle
+.git
+.gitignore
+.idea
+*.iml
+*.log
+*.tar
+*.zip
+.DS_Store
+.env
+Dockerfile
+docker-compose.yml
