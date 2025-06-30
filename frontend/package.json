@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@types/axios": "^0.9.36",
+    "@types/moment": "^2.11.29",
     "@types/react-router-dom": "^5.3.3",
     "antd": "^5.0.0",
     "axios": "^1.10.0",
+    "moment": "^2.30.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.6.2"

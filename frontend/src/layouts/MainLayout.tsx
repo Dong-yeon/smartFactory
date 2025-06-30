@@ -51,10 +51,21 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/dashboard')
     },
     {
-      key: '/production',
+      key: 'production',
       icon: <AppstoreOutlined />,
       label: '생산 관리',
-      onClick: () => navigate('/production')
+      children: [
+        {
+          key: '/production/plan',
+          label: '생산계획관리',
+          onClick: () => navigate('/production/plan')
+        },
+        {
+          key: '/production/work-order',
+          label: '작업지시관리',
+          onClick: () => navigate('/production/work-order')
+        }
+      ]
     },
     {
       key: '/quality',

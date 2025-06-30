@@ -16,7 +16,8 @@ const NotFound = lazy(() => import('@/pages/error/NotFound'));
 const Unauthorized = lazy(() => import('@/pages/error/Unauthorized'));
 
 // Lazy load other pages
-const Production = lazy(() => import('@/pages/production'));
+const ProductionPlan = lazy(() => import('@/pages/production/plan'));
+const ProductionWorkOrder = lazy(() => import('@/pages/production/work-order'));
 const Quality = lazy(() => import('@/pages/quality'));
 const Equipment = lazy(() => import('@/pages/equipment'));
 const Inventory = lazy(() => import('@/pages/inventory'));
@@ -86,13 +87,16 @@ const AppRoutes: React.FC = () => {
         >
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="production" element={<Production />} />
+          <Route path="production">
+            <Route index element={<ProductionPlan />} />
+            <Route path="plan" element={<ProductionPlan />} />
+            <Route path="work-order" element={<ProductionWorkOrder />} />
+          </Route>
           <Route path="quality" element={<Quality />} />
           <Route path="equipment" element={<Equipment />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="worker" element={<Worker />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="production/*" element={<Production />} />
           <Route path="quality/*" element={<Quality />} />
           <Route path="equipment/*" element={<Equipment />} />
           <Route path="inventory/*" element={<Inventory />} />

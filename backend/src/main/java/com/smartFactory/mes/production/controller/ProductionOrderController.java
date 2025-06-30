@@ -1,8 +1,8 @@
-package com.smartFactory.production.controller;
+package com.smartFactory.mes.production.controller;
 
-import com.smartFactory.production.dto.ProductionOrderRequest;
-import com.smartFactory.production.dto.ProductionOrderResponse;
-import com.smartFactory.production.service.ProductionOrderService;
+import com.smartFactory.mes.production.dto.ProductionOrderRequest;
+import com.smartFactory.mes.production.dto.ProductionOrderResponse;
+import com.smartFactory.mes.production.service.ProductionOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -10,10 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
-@RequestMapping("/api/production/orders")
+@RequestMapping("/api/production/plans")
 @RequiredArgsConstructor
 @Tag(name = "Production Order", description = "생산 주문 관리 API")
 public class ProductionOrderController {
@@ -28,8 +26,14 @@ public class ProductionOrderController {
     @GetMapping
     public ResponseEntity<Page<ProductionOrderResponse>> getAllOrders(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(productionOrderService.getAllOrders(page, size));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String orderNumber,
+            @RequestParam(required = false) String productCode,
+            @RequestParam(required = false) String status) {
+
+        return ResponseEntity.ok(productionOrderService.getAllOrders(
+                page, size, orderNumber, productCode, status
+        ));
     }
 
     @Operation(summary = "생산 주문 상세 조회", description = "지정된 ID의 생산 주문을 조회합니다.")
