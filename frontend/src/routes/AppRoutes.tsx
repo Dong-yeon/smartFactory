@@ -23,6 +23,7 @@ const Equipment = lazy(() => import('@/pages/equipment'));
 const Inventory = lazy(() => import('@/pages/inventory'));
 const Worker = lazy(() => import('@/pages/worker'));
 const Settings = lazy(() => import('@/pages/settings'));
+const ItemManagement = lazy(() => import('@/pages/master/item'));
 
 const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
@@ -87,6 +88,10 @@ const AppRoutes: React.FC = () => {
         >
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="master">
+            <Route index element={<ItemManagement />} />
+            <Route path="item" element={<ItemManagement />} />
+          </Route>
           <Route path="production">
             <Route index element={<ProductionPlan />} />
             <Route path="plan" element={<ProductionPlan />} />

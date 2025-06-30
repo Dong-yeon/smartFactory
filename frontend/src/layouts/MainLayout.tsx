@@ -51,6 +51,28 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/dashboard')
     },
     {
+      key: 'master-data',
+      icon: <InboxOutlined />,
+      label: '기준정보',
+      children: [
+        {
+          key: '/master/item',
+          label: '자재관리',
+          onClick: () => navigate('/master/item')
+        },
+        {
+          key: '/master/product',
+          label: '제품관리',
+          onClick: () => navigate('/master/product')
+        },
+        {
+          key: '/master/bom',
+          label: 'BOM 관리',
+          onClick: () => navigate('/master/bom')
+        }
+      ]
+    },
+    {
       key: 'production',
       icon: <AppstoreOutlined />,
       label: '생산 관리',
@@ -75,7 +97,7 @@ const MainLayout: React.FC = () => {
     },
     {
       key: '/equipment',
-      icon: <ToolOutlined />,
+      icon: <ToolOutlined />, 
       label: '설비 관리',
       onClick: () => navigate('/equipment')
     },
