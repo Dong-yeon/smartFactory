@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Schema(description = "생산 주문 생성 요청 DTO")
 public class ProductionOrderRequest {
     @Schema(description = "제품 코드", example = "P-001", required = true)
-    private String productCode;
+    private String itemCode;
     @Schema(description = "주문 수량", example = "100", required = true)
     private int quantity;
     @Schema(description = "납기 일시", example = "2025-07-31 23:59", required = true)

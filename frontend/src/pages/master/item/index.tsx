@@ -292,7 +292,9 @@ const ItemManagement: React.FC = () => {
         size: searchParams.size,
         itemCode: searchParams.itemCode || undefined,
         itemName: searchParams.itemName || undefined,
+        isActive: searchParams.isActive !== null ? searchParams.isActive : undefined
       };
+      console.log("params:", params);
       const response = await axios.get<PageResponse<Item>>('/api/master/items', {
         params,
         paramsSerializer: params => {
@@ -303,7 +305,6 @@ const ItemManagement: React.FC = () => {
         }
       });
       const responseData = response.data;
-      console.log("responseData:",responseData);
       setData(responseData.content);
       setPagination(prev => ({
         ...prev,

@@ -1,6 +1,6 @@
 package com.smartFactory.mes.production.domain;
 
-import com.smartFactory.mes.master.domain.Product;
+import com.smartFactory.mes.master.domain.Item;
 import lombok.*;
 import org.hibernate.annotations.Where;
 
@@ -27,8 +27,8 @@ public class ProductionOrder {
     private String orderNumber;          // 주문 번호
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_code", referencedColumnName = "productCode")
-    private Product product;             // 제품 참조
+    @JoinColumn(name = "item_code", referencedColumnName = "itemCode")
+    private Item item;             // 제품 참조
 
     @Column(nullable = false)
     private int quantity;                // 주문 수량
@@ -61,10 +61,10 @@ public class ProductionOrder {
     private LocalDateTime updatedAt;     // 수정일시
 
     @Builder
-    public ProductionOrder(String orderNumber, Product product, int quantity,
+    public ProductionOrder(String orderNumber, Item item, int quantity,
                            LocalDateTime dueDate, String remarks) {
         this.orderNumber = orderNumber;
-        this.product = product;
+        this.item = item;
         this.quantity = quantity;
         this.dueDate = dueDate;
         this.remarks = remarks;
@@ -73,10 +73,10 @@ public class ProductionOrder {
     }
 
     // 정적 팩토리 메서드
-    public static ProductionOrder createOrder(Product product, int quantity, LocalDateTime dueDate, String remarks) {
+    public static ProductionOrder createOrder(Item item, int quantity, LocalDateTime dueDate, String remarks) {
         return ProductionOrder.builder()
                 .orderNumber(null) // 주문번호는 서비스에서 setOrderNumber로 지정
-                .product(product)
+                .item(item)
                 .quantity(quantity)
                 .dueDate(dueDate)
                 .remarks(remarks)
@@ -112,15 +112,6 @@ public class ProductionOrder {
     public void removeWorkOrder(WorkOrder workOrder) {
         this.workOrders.remove(workOrder);
         workOrder.setProductionOrder(null);
-    }
-
-    // Setter (필요한 경우에만 protected로 제한)
-    protected void setProduct(Product product) {
-        this.product = product;
-    }
-
-    protected void setWorkOrders(List<WorkOrder> workOrders) {
-        this.workOrders = workOrders;
     }
 
     public void setOrderNumber(String orderNumber) {

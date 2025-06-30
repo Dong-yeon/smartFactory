@@ -1,8 +1,8 @@
 package com.smartFactory.mes.production.service;
 
 import com.smartFactory.common.exception.ResourceNotFoundException;
-import com.smartFactory.mes.master.domain.Product;
-import com.smartFactory.mes.master.repository.ProductRepository;
+import com.smartFactory.mes.master.domain.Item;
+import com.smartFactory.mes.master.repository.ItemRepository;
 import com.smartFactory.mes.production.domain.ProductionOrder;
 import com.smartFactory.mes.production.dto.ProductionOrderRequest;
 import com.smartFactory.mes.production.dto.ProductionOrderResponse;
@@ -22,23 +22,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.springframework.data.jpa.domain.Specification.where;
-
 @Service
 @RequiredArgsConstructor
 public class ProductionOrderServiceImpl implements ProductionOrderService {
 
     private final ProductionOrderRepository productionOrderRepository;
-    private final ProductRepository productRepository;
+    private final ItemRepository itemRepository;
 
     @Override
     @Transactional
     public ProductionOrderResponse createOrder(ProductionOrderRequest request) {
-        Product product = productRepository.findByProductCode(request.getProductCode())
-            .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + request.getProductCode()));
+        Item item = itemRepository.findByItemCode(request.getItemCode())
+            .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + request.getItemCode()));
 
         ProductionOrder order = ProductionOrder.createOrder(
-            product,
+            item,
             request.getQuantity(),
             request.getDueDate(),
             request.getRemarks()

@@ -1,6 +1,5 @@
 package com.smartFactory.mes.production.domain;
 
-import com.smartFactory.mes.master.domain.ProductProcess;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,9 +24,9 @@ public class WorkOrderProcess {
     @Column(name = "process_order")
     private int processOrder;  // 공정 실행 순서
 
-    @ManyToOne(fetch = FetchType.LAZY)
+/*    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_process_id")
-    private ProductProcess productProcess;
+    private ProductProcess productProcess;*/
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_order_id")
@@ -59,11 +58,10 @@ public class WorkOrderProcess {
 
     @Builder
     public WorkOrderProcess(String processNo, int processOrder,
-                            ProductProcess productProcess, WorkOrder workOrder,
+                            WorkOrder workOrder,
                             WorkOrderProcess parent, String status) {
         this.processNo = processNo;
         this.processOrder = processOrder;
-        this.productProcess = productProcess;
         this.workOrder = workOrder;
         this.parent = parent;
         this.status = status;

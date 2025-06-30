@@ -15,7 +15,7 @@ public class ProductionOrderResponse {
     @Schema(description = "주문 번호", example = "PO-20250624-12345")
     private String orderNumber;
     @Schema(description = "제품 코드", example = "P-001")
-    private String productCode;
+    private String itemCode;
     @Schema(description = "주문 수량", example = "100")
     private int quantity;
     @Schema(description = "주문 일시", example = "2025-06-24 16:30")
@@ -30,7 +30,7 @@ public class ProductionOrderResponse {
     public ProductionOrderResponse(ProductionOrder order) {
         this.id = order.getId();
         this.orderNumber = order.getOrderNumber();
-        this.productCode = order.getProduct().getProductCode();
+        this.itemCode = order.getItem().getItemCode();
         this.quantity = order.getQuantity();
         this.orderDate = order.getOrderDate();
         this.dueDate = order.getDueDate();
