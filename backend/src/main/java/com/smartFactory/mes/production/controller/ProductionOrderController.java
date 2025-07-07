@@ -28,11 +28,11 @@ public class ProductionOrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String orderNumber,
-            @RequestParam(required = false) String productCode,
+            @RequestParam(required = false) String itemCode,
             @RequestParam(required = false) String status) {
 
         return ResponseEntity.ok(productionOrderService.getAllOrders(
-                page, size, orderNumber, productCode, status
+                page, size, orderNumber, itemCode, status
         ));
     }
 

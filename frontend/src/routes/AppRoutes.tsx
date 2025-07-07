@@ -25,6 +25,7 @@ const Worker = lazy(() => import('@/pages/worker'));
 const Settings = lazy(() => import('@/pages/settings'));
 const ItemManagement = lazy(() => import('@/pages/master/item'));
 const ProductManagement = lazy(() => import('@/pages/master/product'));
+const BomManagement = lazy(() => import('@/pages/master/bom'));
 
 const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
@@ -93,6 +94,7 @@ const AppRoutes: React.FC = () => {
             <Route index element={<ItemManagement />} />
             <Route path="item" element={<ItemManagement />} />
             <Route path="product" element={<ProductManagement />} />
+            <Route path="bom" element={<BomManagement />} />
           </Route>
           <Route path="production">
             <Route index element={<ProductionPlan />} />

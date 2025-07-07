@@ -12,7 +12,7 @@ public interface ProductionOrderService {
         int page,
         int size,
         String orderNumber,
-        String productCode,
+        String itemCode,
         String status
     );
 

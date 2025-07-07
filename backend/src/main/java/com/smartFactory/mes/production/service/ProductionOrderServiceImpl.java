@@ -53,7 +53,7 @@ public class ProductionOrderServiceImpl implements ProductionOrderService {
             int page,
             int size,
             String orderNumber,
-            String productCode,
+            String itemCode,
             String status) {
 
         Pageable pageable = PageRequest.of(page, size);
@@ -65,8 +65,8 @@ public class ProductionOrderServiceImpl implements ProductionOrderService {
             if (StringUtils.hasText(orderNumber)) {
                 predicates.add(cb.like(root.get("orderNumber"), "%" + orderNumber + "%"));
             }
-            if (StringUtils.hasText(productCode)) {
-                predicates.add(cb.like(root.get("product").get("productCode"), "%" + productCode + "%"));
+            if (StringUtils.hasText(itemCode)) {
+                predicates.add(cb.like(root.get("item").get("itemCode"), "%" + itemCode + "%"));
             }
             if (StringUtils.hasText(status)) {
                 predicates.add(cb.equal(root.get("status"), status));

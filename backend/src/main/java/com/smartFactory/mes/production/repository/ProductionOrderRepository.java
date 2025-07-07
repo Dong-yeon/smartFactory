@@ -11,9 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.Optional;
 
 public interface ProductionOrderRepository extends JpaRepository<ProductionOrder, Long>, JpaSpecificationExecutor<ProductionOrder> {
-	@Query("SELECT o FROM ProductionOrder o JOIN FETCH o.product WHERE o.id = :id")
+	@Query("SELECT o FROM ProductionOrder o JOIN FETCH o.item WHERE o.id = :id")
 	Optional<ProductionOrder> findByIdWithProduct(Long id);
 
-	@EntityGraph(attributePaths = {"product"})
+	@EntityGraph(attributePaths = {"item"})
 	Page<ProductionOrder> findAll(Pageable pageable);
 }

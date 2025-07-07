@@ -16,6 +16,7 @@ import jakarta.persistence.*;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -108,5 +109,11 @@ public class ItemServiceImpl implements ItemService {
             }
             return p;
         }, pageable).map(ItemResponse::new);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Item> findByItemCode(String itemCode) {
+        return itemRepository.findByItemCode(itemCode);
     }
 }
