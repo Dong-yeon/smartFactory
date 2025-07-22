@@ -4,6 +4,9 @@ import com.smartFactory.mes.master.enums.ItemType;
 import com.smartFactory.mes.master.enums.UnitType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -41,20 +44,10 @@ public class Item {
     @Column(nullable = false)
     private Boolean isActive = true; // 사용여부
 
+    @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    @Column
+    @LastModifiedDate
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

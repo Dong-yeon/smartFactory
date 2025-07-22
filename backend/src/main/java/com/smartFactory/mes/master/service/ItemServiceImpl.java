@@ -51,7 +51,6 @@ public class ItemServiceImpl implements ItemService {
                 .unit(request.getUnit())
                 .safetyStock(request.getSafetyStock())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
-                .createdAt(item.getCreatedAt())
                 .build();
         return new ItemResponse(itemRepository.save(item));
     }
@@ -64,14 +63,12 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ItemResponse getItem(Long id) {
         return itemRepository.findById(id).map(ItemResponse::new)
                 .orElseThrow(() -> new IllegalArgumentException("Item not found: " + id));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ItemResponse> getItems(int page, int size, String itemCode, String itemName, Boolean isActive) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return itemRepository.findAll((root, query, cb) -> {
@@ -90,7 +87,6 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ItemResponse> getItems(int page, int size, String itemCode, String itemName, Boolean isActive, ItemType itemType) {
         Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return itemRepository.findAll((root, query, cb) -> {

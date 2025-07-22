@@ -64,11 +64,6 @@ const MainLayout: React.FC = () => {
           key: '/master/product',
           label: '제품관리',
           onClick: () => navigate('/master/product')
-        },
-        {
-          key: '/master/bom',
-          label: 'BOM 관리',
-          onClick: () => navigate('/master/bom')
         }
       ]
     },
