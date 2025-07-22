@@ -64,6 +64,11 @@ const MainLayout: React.FC = () => {
           key: '/master/product',
           label: '제품관리',
           onClick: () => navigate('/master/product')
+        },
+        {
+          key: '/master/process',
+          label: '공정관리',
+          onClick: () => navigate('/master/process')
         }
       ]
     },
@@ -92,7 +97,7 @@ const MainLayout: React.FC = () => {
     },
     {
       key: '/equipment',
-      icon: <ToolOutlined />, 
+      icon: <ToolOutlined />,
       label: '설비 관리',
       onClick: () => navigate('/equipment')
     },

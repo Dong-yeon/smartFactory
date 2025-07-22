@@ -40,69 +40,38 @@ const ItemForm: React.FC<{
       okText="저장"
       cancelText="취소"
     >
-      <Form
-        form={form}
-        onFinish={onSave}
-        initialValues={initialValues || { safetyStock: 0 }}
-        layout="vertical"
-      >
-        <Form.Item
-          name="itemType"
-          label="자재유형"
-          rules={[{ required: true, message: '자재유형을 선택해주세요' }]}
-        >
+      <Form form={form} onFinish={onSave} initialValues={initialValues || { safetyStock: 0 }} layout="vertical">
+        <Form.Item name="itemType" label="자재유형" rules={[{ required: true, message: '자재유형을 선택해주세요' }]}>
         <Select placeholder="자재유형을 선택하세요">
           {itemTypeOptions
             .filter(opt => !!opt.value)
             .map(opt => (
               <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-            ))} 
+            ))}
         </Select>
         </Form.Item>
-        <Form.Item
-          name="itemCode"
-          label="자재 코드"
-          rules={[{ required: true, message: '자재 코드를 입력해주세요' }]}
-        >
+        <Form.Item name="itemCode" label="자재 코드" rules={[{ required: true, message: '자재 코드를 입력해주세요' }]}>
           <Input placeholder="자재 코드를 입력하세요" />
         </Form.Item>
-        <Form.Item
-          name="itemName"
-          label="자재명"
-          rules={[{ required: true, message: '자재명을 입력해주세요' }]}
-        >
+        <Form.Item name="itemName" label="자재명" rules={[{ required: true, message: '자재명을 입력해주세요' }]}>
           <Input placeholder="자재명을 입력하세요" />
         </Form.Item>
-        <Form.Item
-          name="spec"
-          label="규격"
-        >
+        <Form.Item name="spec" label="규격">
           <Input placeholder="규격을 입력하세요" />
         </Form.Item>
-        <Form.Item
-          name="unit"
-          label="단위"
-          rules={[{ required: true, message: '단위를 입력해주세요' }]}
-        >
+        <Form.Item name="unit" label="단위" rules={[{ required: true, message: '단위를 입력해주세요' }]}>
         <Select placeholder="단위를 선택하세요">
           {itemUnitOptions
             .filter(opt => !!opt.value)
             .map(opt => (
               <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-            ))} 
+            ))}
         </Select>
         </Form.Item>
-        <Form.Item
-          name="safetyStock"
-          label="재고수량"
-        >
+        <Form.Item name="safetyStock" label="재고수량">
           <InputNumber min={0} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item
-          name="isActive"
-          label="사용여부"
-          valuePropName="checked"
-        >
+        <Form.Item name="isActive" label="사용여부" valuePropName="checked">
           <Switch />
         </Form.Item>
       </Form>
@@ -285,8 +254,8 @@ const ItemManagement: React.FC = () => {
   });
 
   const fetchItems = async () => {
-    try {
       setLoading(true);
+      try {
       const params = {
         page: searchParams.page,
         size: searchParams.size,
@@ -294,7 +263,6 @@ const ItemManagement: React.FC = () => {
         itemName: searchParams.itemName || undefined,
         isActive: searchParams.isActive !== null ? searchParams.isActive : undefined
       };
-      console.log("params:", params);
       const response = await axios.get<PageResponse<Item>>('/api/master/items', {
         params,
         paramsSerializer: params => {

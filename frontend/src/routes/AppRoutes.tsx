@@ -25,6 +25,7 @@ const Worker = lazy(() => import('@/pages/worker'));
 const Settings = lazy(() => import('@/pages/settings'));
 const ItemManagement = lazy(() => import('@/pages/master/item'));
 const ProductManagement = lazy(() => import('@/pages/master/product'));
+const ProcessManagement = lazy(() => import('@/pages/master/process'));
 
 const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
@@ -35,7 +36,7 @@ interface PrivateRouteProps {
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  
+
   if (loading) {
     return (
       <div style={{
@@ -49,18 +50,18 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) {
     // Redirect to login page with the return URL
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
-  
+
   return children;
 };
 
 const AppRoutes: React.FC = () => {
   return (
-    <Suspense 
+    <Suspense
       fallback={
         <div style={{
           display: 'flex',
@@ -93,6 +94,7 @@ const AppRoutes: React.FC = () => {
             <Route index element={<ItemManagement />} />
             <Route path="item" element={<ItemManagement />} />
             <Route path="product" element={<ProductManagement />} />
+            <Route path="process" element={<ProcessManagement />} />
           </Route>
           <Route path="production">
             <Route index element={<ProductionPlan />} />
