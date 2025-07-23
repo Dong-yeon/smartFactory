@@ -12,7 +12,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,12 +26,17 @@ public class ProcessServiceImpl implements ProcessService {
     @Override
     @Transactional
     public ProcessResponse createProcess(ProcessRequest request) {
+        Process parent = null;
+        long count = processRepository.count();
+        String processCode = String.format("P%03d", count + 1);
+
         Process process = Process.builder()
-                .processCode(request.getProcessCode())
+                .processCode(processCode)
                 .processName(request.getProcessName())
                 .processType(request.getProcessType())
-                .processOrder(request.getProcessOrder())
+//                .processOrder(request.getProcessOrder())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+//                .parent(parent)
                 .build();
         Process saved = processRepository.save(process);
         return toResponse(saved);
@@ -40,14 +49,15 @@ public class ProcessServiceImpl implements ProcessService {
                 .orElseThrow(() -> new IllegalArgumentException("Process not found: " + processId));
         process = Process.builder()
                 .id(process.getId())
-                .processCode(request.getProcessCode())
+                .processCode(process.getProcessCode())
                 .processName(request.getProcessName())
                 .processType(request.getProcessType())
-                .processOrder(request.getProcessOrder())
+//                .processOrder(process.getProcessOrder())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .build();
         Process saved = processRepository.save(process);
         return toResponse(saved);
+
     }
 
     @Override
@@ -80,6 +90,14 @@ public class ProcessServiceImpl implements ProcessService {
             return predicates;
         };
         return processRepository.findAll(spec, pageable).map(this::toResponse);
+    }
+
+    @Override
+    public List<ProcessResponse> getProcessAll() {
+        List<Process> processList = processRepository.findAll();
+        return processList.stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private ProcessResponse toResponse(Process process) {

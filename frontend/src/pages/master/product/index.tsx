@@ -86,7 +86,7 @@ const ItemForm: React.FC<{
             .filter(opt => !!opt.value)
             .map(opt => (
               <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-            ))} 
+            ))}
         </Select>
         </Form.Item>
         <Form.Item
@@ -150,7 +150,8 @@ const SearchBar: React.FC<{
   const [localParams, setLocalParams] = useState<SearchParams>(searchParams);
 
   useEffect(() => {
-    setLocalParams(searchParams);
+    fetchItems();
+    // setLocalParams(searchParams);
   }, [searchParams]);
 
   const handleSearch = () => {
@@ -242,6 +243,13 @@ const ItemManagement: React.FC = () => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [itemTypeOptions, setItemTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [itemUnitOptions, setItemUnitOptions] = useState<{ value: string; label: string }[]>([]);
+  const [searchParams, setSearchParams] = useState<SearchParams>({
+    page: 0,
+    size: 10,
+    itemCode: '',
+    itemName: '',
+    isActive: true,
+  });
 
   // 제품유형 목록 불러오기
   useEffect(() => {
@@ -272,14 +280,6 @@ const ItemManagement: React.FC = () => {
     };
     fetchItemTypes();
   }, []);
-
-  const [searchParams, setSearchParams] = useState<SearchParams>({
-    page: 0,
-    size: 10,
-    itemCode: '',
-    itemName: '',
-    isActive: true,
-  });
 
   const fetchItems = async () => {
     try {

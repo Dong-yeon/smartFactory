@@ -69,6 +69,11 @@ const MainLayout: React.FC = () => {
           key: '/master/process',
           label: '공정관리',
           onClick: () => navigate('/master/process')
+        },
+        {
+          key: '/master/product-process',
+          label: '제품별 공정관리',
+          onClick: () => navigate('/master/product-process')
         }
       ]
     },

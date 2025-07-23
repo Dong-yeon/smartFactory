@@ -57,6 +57,24 @@ interface SearchParams {
     isActive: boolean | null;
 }
 
+function convertToTreeData(processList) {
+    return processList.map((process) => ({
+        title: process.processName,
+        key: process.id,
+        value: process.id,
+        children: Array.isArray(process.children) && process.children.length > 0 ? convertToTreeData(process.children) : [],
+        disabled: !process.isActive
+    }));
+}
+
+function getParentOptions(treeData, excludeId) {
+    return treeData.map(node => ({
+        ...node,
+        disabled: node.key === excludeId,
+        children: node.children ? getParentOptions(node.children, excludeId) : [],
+    }));
+}
+
 // 고정 등록/수정 폼 컴포넌트
 const ProcessForm: React.FC<{
     visible: boolean;
@@ -65,18 +83,11 @@ const ProcessForm: React.FC<{
     loading: boolean;
     initialValues?: any;
     processTypeOptions: { value: string; label: string }[];
-    data: any[];
+    parentOptions: any[]; // 트리구조 공정 목록
 }> = ({
-          visible, onCancel, onSave, loading, initialValues, processTypeOptions, data
+          visible, onCancel, onSave, loading, initialValues, processTypeOptions, parentOptions
       }) => {
     const [form] = Form.useForm();
-
-    const handleProcessTypeChange = (value) => {
-        const count = data.filter(proc => proc.processType === value).length;
-        form.setFieldsValue({
-            processName: `${processTypeOptions.find(opt => opt.value === value)?.label}-${count + 1}`
-        });
-    };
 
     useEffect(() => {
         if (visible) {
@@ -98,8 +109,14 @@ const ProcessForm: React.FC<{
             cancelText="취소"
         >
             <Form form={form} onFinish={onSave} initialValues={initialValues || {isActive: true}} layout="vertical">
+                <Form.Item name="processCode" label="공정코드" rules={[{required: true, message: '공정코드을 입력해주세요'}]}>
+                    <Input placeholder="공정코드을 입력해주세요"/>
+                </Form.Item>
+                <Form.Item name="processName" label="공정명" rules={[{required: true, message: '공정명을 입력하세요'}]}>
+                    <Input placeholder="공정명을 입력해주세요"/>
+                </Form.Item>
                 <Form.Item name="processType" label="공정유형" rules={[{required: true, message: '공정유형을 선택하세요'}]}>
-                    <Select onChange={handleProcessTypeChange} placeholder="공정유형을 선택해주세요">
+                    <Select placeholder="공정유형을 선택해주세요">
                         {processTypeOptions.map((option) => (
                             <Option key={option.value} value={option.value}>
                                 {option.label}
@@ -107,8 +124,17 @@ const ProcessForm: React.FC<{
                         ))}
                     </Select>
                 </Form.Item>
-                <Form.Item name="processName" label="공정명" rules={[{required: true}]}>
-                    <Input placeholder="공정명을 입력해주세요"/>
+                <Form.Item name="processOrder" label="공정순서" rules={[{required: true, message: '공정순서를 입력하세요'}]}>
+                    <InputNumber placeholder="공정순서" min={1}/>
+                </Form.Item>
+                <Form.Item name="parentId" label="상위 공정">
+                    <TreeSelect
+                        treeData={parentOptions}
+                        placeholder="상위 공정 선택(없으면 최상위)"
+                        allowClear
+                        treeDefaultExpandAll
+                        fieldNames={{ title: 'title', value: 'value', children: 'children' }} // value: 'value'로!
+                    />
                 </Form.Item>
                 <Form.Item name="isActive" label="사용여부" valuePropName="checked">
                     <Switch checkedChildren="활성" unCheckedChildren="비활성"/>
@@ -223,9 +249,20 @@ const ProcessManagement = () => {
         pageSize: 10,
         total: 0,
     });
+    const [treeData, setTreeData] = useState<any[]>([]);
     const [selectedProcess, setSelectedProcess] = useState<Item | null>(null);
     const [editing, setEditing] = useState<Item | null>(null);
     const [processTypeOptions, setProcessTypeOptions] = useState<{ value: string; label: string }[]>([]);
+
+    const fetchProcessTree = async () => {
+        try {
+            const response = await axios.get('/api/master/process/tree');
+            setTreeData(convertToTreeData(response.data));
+            console.log('treeData: ', treeData);
+        } catch (err) {
+            setTreeData([]);
+        }
+    };
 
     const fetchProcessTypes = async () => {
         try {
@@ -282,6 +319,10 @@ const ProcessManagement = () => {
     };
 
     useEffect(() => {
+        fetchProcessTree();
+    }, []);
+
+    useEffect(() => {
         const fetchProcessTypes = async () => {
             try {
                 const response = await axios.get('/api/master/process/types');
@@ -319,11 +360,11 @@ const ProcessManagement = () => {
                 return processType ? processType.label : 'Unknown';
             },
         },
-/*        {
+        {
             title: '공정순서',
             dataIndex: 'processOrder',
             key: 'processOrder',
-        },*/
+        },
         {
             title: '사용여부',
             dataIndex: 'isActive',
@@ -334,13 +375,7 @@ const ProcessManagement = () => {
             title: '관리',
             key: 'action',
             render: (_, record) => (
-                <Button
-                    type="link"
-                    onClick={() => {
-                        setIsModalVisible(true);
-                        setEditing(record);
-                    }}
-                >
+                <Button type="link" onClick={() => setEditing(record)}>
                     수정
                 </Button>
             ),
@@ -381,43 +416,60 @@ const ProcessManagement = () => {
 
     return (
         <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Title level={4} style={{ margin: 0 }}>공정 관리</Title>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => { setIsModalVisible(true); setEditing(null); }}
-                >
-                    공정 등록
-                </Button>
-            </div>
-            <SearchBar
-                searchParams={searchParams}
-                setSearchParams={setSearchParams}
-                fetchDatas={fetchDatas}
-            />
-            <ProcessForm
-                visible={isModalVisible}
-                onCancel={() => { setIsModalVisible(false); setEditing(null); }}
-                onSave={handleSave}
-                loading={isSubmitting}
-                initialValues={editing || undefined}
-                processTypeOptions={processTypeOptions}
-                data={data}
-            />
-            <Table
-                columns={columns}
-                dataSource={data}
-                rowKey="id"
-                pagination={{
-                    ...pagination,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showTotal: (total, range) => `${range[0]}-${range[1]} / 총 ${total}건`,
-                }}
-                loading={loading}
-                onChange={handleTableChange}
-            />
+            <Row gutter={24}>
+                <Col span={6}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Title level={5} style={{ margin: 0 }}>공정 트리</Title>
+                        <Button
+                            type="primary"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => { setIsModalVisible(true); setEditing(null); }}
+                        >
+                            공정 등록
+                        </Button>
+                    </div>
+{/*                    <SearchBar
+                        searchParams={searchParams}
+                        setSearchParams={setSearchParams}
+                        fetchDatas={fetchDatas}
+                    />*/}
+                    <Tree
+                        treeData={treeData}
+                        onSelect={(keys, info) => {
+                            const selected = data.find(proc => proc.id === info.node.key);
+                            setEditing(selected);
+                            setIsModalVisible(true);
+                        }}
+                        defaultExpandAll
+                        style={{ background: '#fff', padding: 12, borderRadius: 4 }}
+                    />
+                </Col>
+                <Col span={18}>
+                    <ProcessForm
+                        visible={isModalVisible}
+                        onCancel={() => { setIsModalVisible(false); setEditing(null); }}
+                        onSave={handleSave}
+                        loading={isSubmitting}
+                        initialValues={editing || undefined}
+                        processTypeOptions={processTypeOptions}
+                        parentOptions={editing ? getParentOptions(treeData, editing.id) : treeData}
+                    />
+                    <Table
+                        columns={columns}
+                        dataSource={data}
+                        rowKey="id"
+                        pagination={{
+                            ...pagination,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            showTotal: (total, range) => `${range[0]}-${range[1]} / 총 ${total}건`,
+                        }}
+                        loading={loading}
+                        onChange={handleTableChange}
+                    />
+                </Col>
+            </Row>
         </div>
     );
 };

@@ -122,7 +122,8 @@ const SearchBar: React.FC<{
   const [localParams, setLocalParams] = useState<SearchParams>(searchParams);
 
   useEffect(() => {
-    setLocalParams(searchParams);
+    fetchItems();
+    // setLocalParams(searchParams);
   }, [searchParams]);
 
   const handleSearch = () => {
@@ -219,7 +220,7 @@ const ItemManagement: React.FC = () => {
   useEffect(() => {
     const fetchItemTypes = async () => {
       try {
-        const response = await axios.get('/api/master/items/types');
+        const response = await axios.get('/api/master/itemsw/types');
         setItemTypeOptions(
           (response.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))
         );
@@ -378,7 +379,6 @@ const ItemManagement: React.FC = () => {
       fetchItems();
     } catch (error: any) {
       message.error('저장 중 오류가 발생했습니다.');
-      console.error('저장 오류:', error);
     } finally {
       setIsSubmitting(false);
     }

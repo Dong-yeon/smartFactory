@@ -8,6 +8,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @EntityListeners(AuditingEntityListener.class)
@@ -32,7 +34,7 @@ public class Process {
 	@Column(name = "process_type", nullable = false, length = 50)
 	private ProcessType processType;
 
-	@Column(name = "process_order", nullable = false)
+	@Column(name = "process_order")
 	private int processOrder;
 
 	@Column(nullable = false)

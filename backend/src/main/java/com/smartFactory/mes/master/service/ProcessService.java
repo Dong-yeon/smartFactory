@@ -6,6 +6,7 @@ import com.smartFactory.mes.master.dto.ProcessResponse;
 import com.smartFactory.mes.master.enums.ProcessType;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProcessService {
@@ -14,4 +15,5 @@ public interface ProcessService {
     void deleteProcess(Long processId);
     ProcessResponse getProcess(Long processId);
     Page<ProcessResponse> getProcesses(int page, int size, String processCode, String processName, Boolean isActive);
+    List<ProcessResponse> getProcessAll();     //getProcessesByProcessType(ProcessType processType);
 }
