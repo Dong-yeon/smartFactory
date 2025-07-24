@@ -1,289 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Table, message, Typography } from 'antd';
-import { Input, Select, Row, Col, Button, Modal, Form, InputNumber, Switch } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 import axios from 'axios';
+import { Form, Input, Select, Button, Modal, Space, message, Switch, InputNumber } from 'antd';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 
-const { Search } = Input;
-const { Title } = Typography;
+ModuleRegistry.registerModules([ AllCommunityModule ]);
+
 const { Option } = Select;
 
-// 자재 등록/수정 폼 컴포넌트
-const ItemForm: React.FC<{
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (values: ItemRequest) => void;
-  loading: boolean;
-  initialValues?: Partial<ItemRequest>;
-  itemTypeOptions: { value: string; label: string }[];
-  itemUnitOptions: { value: string; label: string }[];
-}> = ({ visible, onCancel, onSave, loading, initialValues, itemTypeOptions, itemUnitOptions }) => {
+const defaultColDef = {
+  resizable: true,
+  sortable: true,
+  filter: true,
+};
+
+const ItemGrid = () => {
   const [form] = Form.useForm();
-
-  useEffect(() => {
-    if (visible) {
-      form.resetFields();
-      if (initialValues) {
-        form.setFieldsValue(initialValues);
-      }
-    }
-  }, [visible, initialValues, form]);
-
-  return (
-    <Modal
-      title={initialValues ? '자재 수정' : '자재 등록'}
-      open={visible}
-      onOk={() => form.submit()}
-      onCancel={onCancel}
-      confirmLoading={loading}
-      okText="저장"
-      cancelText="취소"
-    >
-      <Form form={form} onFinish={onSave} initialValues={initialValues || { safetyStock: 0 }} layout="vertical">
-        <Form.Item name="itemType" label="자재유형" rules={[{ required: true, message: '자재유형을 선택해주세요' }]}>
-        <Select placeholder="자재유형을 선택하세요">
-          {itemTypeOptions
-            .filter(opt => !!opt.value)
-            .map(opt => (
-              <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-            ))}
-        </Select>
-        </Form.Item>
-        <Form.Item name="itemCode" label="자재 코드" rules={[{ required: true, message: '자재 코드를 입력해주세요' }]}>
-          <Input placeholder="자재 코드를 입력하세요" />
-        </Form.Item>
-        <Form.Item name="itemName" label="자재명" rules={[{ required: true, message: '자재명을 입력해주세요' }]}>
-          <Input placeholder="자재명을 입력하세요" />
-        </Form.Item>
-        <Form.Item name="spec" label="규격">
-          <Input placeholder="규격을 입력하세요" />
-        </Form.Item>
-        <Form.Item name="unit" label="단위" rules={[{ required: true, message: '단위를 입력해주세요' }]}>
-        <Select placeholder="단위를 선택하세요">
-          {itemUnitOptions
-            .filter(opt => !!opt.value)
-            .map(opt => (
-              <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-            ))}
-        </Select>
-        </Form.Item>
-        <Form.Item name="safetyStock" label="재고수량">
-          <InputNumber min={0} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="isActive" label="사용여부" valuePropName="checked">
-          <Switch />
-        </Form.Item>
-      </Form>
-    </Modal>
-  );
-};
-
-interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  pageable: { pageNumber: number; pageSize: number };
-}
-
-interface Item {
-  id: number;
-  itemType: string;
-  itemCode: string;
-  itemName: string;
-  spec?: string;
-  unit: string;
-  safetyStock: number;
-  isActive: boolean;
-}
-
-interface ItemRequest {
-  itemType: string;
-  itemCode: string;
-  itemName: string;
-  spec?: string;
-  unit: string;
-  safetyStock: number;
-  isActive: boolean;
-}
-
-interface SearchParams {
-  page: number;
-  size: number;
-  itemCode: string;
-  itemName: string;
-  isActive: boolean | null;
-}
-
-const SearchBar: React.FC<{
-  searchParams: SearchParams;
-  setSearchParams: (params: SearchParams) => void;
-  fetchItems: () => void;
-}> = ({ searchParams, setSearchParams, fetchItems }) => {
-  const [localParams, setLocalParams] = useState<SearchParams>(searchParams);
-
-  useEffect(() => {
-    fetchItems();
-    // setLocalParams(searchParams);
-  }, [searchParams]);
-
-  const handleSearch = () => {
-    setSearchParams({ ...localParams, page: 0 });
-    fetchItems();
-  };
-
-  const handleReset = () => {
-    const resetParams = { page: 0, size: 10, itemCode: '', itemName: '', isActive: true };
-    setLocalParams(resetParams);
-    setSearchParams(resetParams);
-    fetchItems();
-  };
-
-  const handleInputChange = (field: keyof SearchParams) => (e: any) => {
-    let value;
-    if (field === 'isActive') {
-      value = e === '' ? null : e === 'true';
-    } else {
-      value = e && e.target ? e.target.value : e;
-    }
-    setLocalParams(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          flexWrap: 'wrap',
-          width: '100%',
-        }}
-      >
-        <Search
-          placeholder="자재코드 검색"
-          value={localParams.itemCode}
-          onChange={handleInputChange('itemCode')}
-          onSearch={handleSearch}
-          enterButton
-          allowClear
-          style={{ minWidth: 160, flex: '0 0 300px' }}
-        />
-        <Search
-          placeholder="자재명 검색"
-          value={localParams.itemName}
-          onChange={handleInputChange('itemName')}
-          onSearch={handleSearch}
-          enterButton
-          allowClear
-          style={{ minWidth: 160, flex: '0 0 300px' }}
-        />
-        <Select
-          placeholder="활성/비활성 전체"
-          allowClear
-          style={{ minWidth: 120, flex: '0 0 120px' }}
-          value={localParams.isActive === null ? '' : String(localParams.isActive)}
-          onChange={handleInputChange('isActive')}
-        >
-          <Select.Option value="">전체</Select.Option>
-          <Select.Option value="true">활성</Select.Option>
-          <Select.Option value="false">비활성</Select.Option>
-        </Select>
-        <Button type="primary" onClick={handleSearch} style={{ marginRight: 4 }}>
-          검색
-        </Button>
-        <Button onClick={handleReset}>
-          초기화
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-const ItemManagement: React.FC = () => {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [data, setData] = useState<Item[]>([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [searchForm] = Form.useForm();
+  const [rowData, setRowData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [itemTypeOptions, setItemTypeOptions] = useState<{ value: string; label: string }[]>([]);
   const [itemUnitOptions, setItemUnitOptions] = useState<{ value: string; label: string }[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const gridRef = useRef<any>(null);
 
-  // 자재유형 목록 불러오기
   useEffect(() => {
-    const fetchItemTypes = async () => {
-      try {
-        const response = await axios.get('/api/master/itemsw/types');
-        setItemTypeOptions(
-          (response.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))
-        );
-      } catch (err) {
-        setItemTypeOptions([]);
-      }
-    };
-    fetchItemTypes();
+    axios.get('/api/master/items/types')
+      .then(res => setItemTypeOptions((res.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))))
+      .catch(() => setItemTypeOptions([]));
   }, []);
 
-  // 단위 목록 불러오기
   useEffect(() => {
-    const fetchItemTypes = async () => {
-      try {
-        const response = await axios.get('/api/master/items/units');
-        setItemUnitOptions(
-          (response.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))
-        );
-      } catch (err) {
-        setItemUnitOptions([]);
-      }
-    };
-    fetchItemTypes();
+    axios.get('/api/master/items/units')
+        .then(res => setItemUnitOptions((res.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))))
+        .catch(() => setItemUnitOptions([]));
   }, []);
 
-  const [searchParams, setSearchParams] = useState<SearchParams>({
-    page: 0,
-    size: 10,
-    itemCode: '',
-    itemName: '',
-    isActive: true,
-  });
-
-  const fetchItems = async () => {
-      setLoading(true);
-      try {
-      const params = {
-        page: searchParams.page,
-        size: searchParams.size,
-        itemCode: searchParams.itemCode || undefined,
-        itemName: searchParams.itemName || undefined,
-        isActive: searchParams.isActive !== null ? searchParams.isActive : undefined
-      };
-      const response = await axios.get<PageResponse<Item>>('/api/master/items', {
-        params,
-        paramsSerializer: params => {
-          return Object.entries(params)
-            .filter(([_, value]) => value !== undefined)
-            .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-            .join('&');
-        }
-      });
-      const responseData = response.data;
-      setData(responseData.content);
-      setPagination(prev => ({
-        ...prev,
-        total: responseData.totalElements,
-        current: responseData.pageable.pageNumber + 1,
-        pageSize: responseData.pageable.pageSize,
-      }));
-    } catch (error) {
-      message.error('자재 데이터를 불러오는 중 오류가 발생했습니다.');
-      console.error('Error fetching items:', error);
+  const fetchItems = async (params = {}) => {
+    setLoading(true);
+    try {
+      const res = await axios.get('/api/master/items', { params: { page: 0, size: 1000, ...params } });
+      setRowData(res.data.content || []);
+    } catch {
+      setRowData([]);
     } finally {
       setLoading(false);
     }
@@ -291,140 +55,189 @@ const ItemManagement: React.FC = () => {
 
   useEffect(() => {
     fetchItems();
-    // eslint-disable-next-line
-  }, [searchParams.page, searchParams.size]);
+  }, []);
 
-  const columns: ColumnsType<Item> = [
+  const columnDefs = useMemo(() => [
     {
-      title: '자재유형',
-      dataIndex: 'itemType',
-      key: 'itemType',
-      render: (value: string) => {
-        const found = itemTypeOptions.find(opt => opt.value === value);
-        return found ? found.label : value;
+      headerName: '',
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      width: 40,
+      pinned: 'left',
+      suppressMenu: true,
+      suppressMovable: true,
+    },
+    { headerName: 'ID', field: 'id', minWidth: 60, maxWidth: 80 },
+    { headerName: '품목코드', field: 'itemCode', minWidth: 100, flex: 1 },
+    { headerName: '품목명', field: 'itemName', minWidth: 120, flex: 2 },
+    {
+      headerName: '품목구분', field: 'itemType', minWidth: 100, flex: 1,
+      valueFormatter: (params: any) => {
+        const found = itemTypeOptions.find(opt => opt.value === params.value);
+        return found ? found.label : params.value;
       }
     },
-    {
-      title: '자재코드',
-      dataIndex: 'itemCode',
-      key: 'itemCode',
-    },
-    {
-      title: '자재명',
-      dataIndex: 'itemName',
-      key: 'itemName',
-    },
-    {
-      title: '규격',
-      dataIndex: 'spec',
-      key: 'spec',
-    },
-    {
-      title: '단위',
-      dataIndex: 'unit',
-      key: 'unit',
-      render: (value: string) => {
-        const found = itemUnitOptions.find(opt => opt.value === value);
-        return found ? found.label : value;
-      }
-    },
-    {
-      title: '재고수량',
-      dataIndex: 'safetyStock',
-      key: 'safetyStock',
-    },
-    {
-      title: '사용여부',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      render: (value: boolean) => (value ? '활성화' : '비활성화'),
-    },
-    {
-      title: '관리',
-      key: 'action',
-      render: (_, record) => (
-        <Button type="link" onClick={() => setEditingItem(record)}>
-          수정
-        </Button>
-      ),
-    },
-  ];
+    { headerName: '규격/모델', field: 'spec', minWidth: 100, flex: 1 },
+    { headerName: '단위', field: 'unit', minWidth: 60, maxWidth: 80 },
+    { headerName: '안전재고', field: 'safetyStock', minWidth: 80, maxWidth: 100 },
+    { headerName: '사용여부', field: 'isActive', minWidth: 80, maxWidth: 100, valueFormatter: p => p.value ? '활성' : '비활성' },
+  ], [itemTypeOptions]);
 
-  const handleTableChange = (pagination: any) => {
-    setSearchParams(prev => ({
-      ...prev,
-      page: pagination.current - 1,
-      size: pagination.pageSize,
-    }));
+  // 검색 핸들러
+  const onSearch = (values: any) => {
+    fetchItems(values);
   };
 
-  const handleSave = async (values: ItemRequest) => {
+  // 추가 버튼
+  const handleAdd = () => {
+    setModalMode('add');
+    setEditingItem(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  // 행 더블클릭 시 수정
+  const handleRowDoubleClicked = async (event: any) => {
+    setModalMode('edit');
+    setEditingItem(event.data);
+    setModalVisible(true);
     try {
-      setIsSubmitting(true);
-      if (editingItem) {
-        // 수정
-        await axios.put(`/api/master/items/${editingItem.id}`, values, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        message.success('자재 정보가 수정되었습니다.');
-      } else {
-        // 등록
-        await axios.post('/api/master/items', values, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-        message.success('자재가 등록되었습니다.');
+      const res = await axios.get(`/api/master/items/${event.data.id}`);
+      form.setFieldsValue(res.data);
+    } catch {
+      message.error('상세 정보를 불러오지 못했습니다');
+    }
+  };
+
+  // 체크박스 선택 변경
+  const onSelectionChanged = () => {
+    const selectedRows = gridRef.current?.api.getSelectedRows() || [];
+    setSelectedIds(selectedRows.map((row: any) => row.id));
+  };
+
+  // 일괄 삭제
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return;
+    Modal.confirm({
+      title: '선택한 자재(품목)를 삭제하시겠습니까?',
+      content: `${selectedIds.length}개 항목`,
+      okText: '삭제',
+      okType: 'danger',
+      cancelText: '취소',
+      onOk: async () => {
+        try {
+          await Promise.all(selectedIds.map(id => axios.delete(`/api/master/items/${id}`)));
+          message.success('삭제되었습니다');
+          setSelectedIds([]);
+          fetchItems();
+        } catch {
+          message.error('삭제 실패');
+        }
       }
-      setIsModalVisible(false);
-      setEditingItem(null);
+    });
+  };
+
+  // 추가/수정 저장
+  const onModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      if (modalMode === 'add') {
+        await axios.post('/api/master/items', values);
+        message.success('등록되었습니다');
+      } else if (editingItem) {
+        await axios.put(`/api/master/items/${editingItem.id}`, values);
+        message.success('수정되었습니다');
+      }
+      setModalVisible(false);
       fetchItems();
-    } catch (error: any) {
-      message.error('저장 중 오류가 발생했습니다.');
-    } finally {
-      setIsSubmitting(false);
+    } catch (e) {
+      // validation error
     }
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>자재 관리</Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => { setIsModalVisible(true); setEditingItem(null); }}
-        >
-          자재 등록
-        </Button>
+    <div style={{ padding: 24 }}>
+      <h4>자재(품목) 관리</h4>
+      {/* 검색 폼 및 추가/삭제 버튼 */}
+      <Form
+        form={searchForm}
+        layout="inline"
+        onFinish={onSearch}
+        style={{ marginBottom: 16 }}
+      >
+        <Form.Item name="itemCode" label="품목코드">
+          <Input placeholder="품목코드" allowClear />
+        </Form.Item>
+        <Form.Item name="itemName" label="품목명">
+          <Input placeholder="품목명" allowClear />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">검색</Button>
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" onClick={handleAdd}>추가</Button>
+        </Form.Item>
+        <Form.Item>
+          <Button danger disabled={selectedIds.length === 0} onClick={handleBatchDelete}>삭제</Button>
+        </Form.Item>
+      </Form>
+
+      {/* AG Grid */}
+      <div className="ag-theme-alpine" style={{ width: '100%', height: 800 }}>
+        <AgGridReact
+          ref={gridRef}
+          rowData={rowData}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          rowSelection="multiple"
+          suppressRowClickSelection={false}
+          onRowDoubleClicked={handleRowDoubleClicked}
+          onSelectionChanged={onSelectionChanged}
+          loadingOverlayComponentParams={{ loadingMessage: '로딩 중...' }}
+          overlayLoadingTemplate={loading ? '<span class=\"ag-overlay-loading-center\">로딩 중...</span>' : undefined}
+        />
       </div>
-      <ItemForm
-        visible={isModalVisible || editingItem !== null}
-        onCancel={() => { setIsModalVisible(false); setEditingItem(null); }}
-        onSave={handleSave}
-        loading={isSubmitting}
-        initialValues={editingItem || undefined}
-        itemTypeOptions={itemTypeOptions}
-        itemUnitOptions={itemUnitOptions}
-      />
-      <SearchBar
-        searchParams={searchParams}
-        setSearchParams={setSearchParams}
-        fetchItems={fetchItems}
-      />
-      <Table
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50', '100'],
-          showTotal: (total, range) => `${range[0]}-${range[1]} / 총 ${total}건`,
-        }}
-        loading={loading}
-        onChange={handleTableChange}
-      />
+
+      {/* 추가/수정 모달 */}
+      <Modal
+        title={modalMode === 'add' ? '자재(품목) 추가' : '자재(품목) 수정'}
+        open={modalVisible}
+        onOk={onModalOk}
+        onCancel={() => setModalVisible(false)}
+        okText="저장"
+        cancelText="취소"
+        destroyOnClose
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ isActive: true, safetyStock: 0 }}
+        >
+          <Form.Item name="itemCode" label="품목코드" rules={[{ required: true, message: '품목코드를 입력해주세요' }]}>
+            <Input placeholder="품목코드" />
+          </Form.Item>
+          <Form.Item name="itemName" label="품목명" rules={[{ required: true, message: '품목명을 입력해주세요' }]}>
+            <Input placeholder="품목명" />
+          </Form.Item>
+          <Form.Item name="itemType" label="품목구분" rules={[{ required: true, message: '품품목구분을 선택해주세요' }]}>
+            <Select placeholder="품목구분" options={itemTypeOptions} />
+          </Form.Item>
+          <Form.Item name="spec" label="규격/모델">
+            <Input placeholder="규격/모델" />
+          </Form.Item>
+          <Form.Item name="unit" label="단위">
+            <Select options={itemUnitOptions} />
+          </Form.Item>
+          <Form.Item name="safetyStock" label="안전재고">
+            <InputNumber style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="isActive" label="사용여부" valuePropName="checked">
+            <Switch checkedChildren="활성" unCheckedChildren="비활성" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
 
-export default ItemManagement;
+export default ItemGrid;

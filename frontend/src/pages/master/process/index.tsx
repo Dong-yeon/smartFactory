@@ -1,425 +1,224 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {
-    Table,
-    message,
-    Typography,
-    Button,
-    Modal,
-    Form,
-    Input,
-    Select,
-    Switch,
-    InputNumber,
-    Row,
-    Col,
-    Tree,
-    TreeSelect
-} from 'antd';
-import {PlusOutlined} from '@ant-design/icons';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 import axios from 'axios';
+import { Form, Input, Select, Button, Modal, Space, message, Switch, InputNumber } from 'antd';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 
-const { Search } = Input;
-const {Title} = Typography;
-const {Option} = Select;
+ModuleRegistry.registerModules([ AllCommunityModule ]);
 
-// Response
-interface PageResponse<T> {
-    content: T[];
-    totalElements: number;
-    pageable: { pageNumber: number; pageSize: number };
-}
+const { Option } = Select;
 
-// Response
-interface Process {
-    id: number;
-    processCode: string;
-    processName: string;
-    processType: string;
-    processOrder: number;
-    isActive: boolean;
-}
+const defaultColDef = {
+    resizable: true,
+    sortable: true,
+    filter: true,
+};
 
-// Request
-interface ProcessRequest {
-    processCode: string;
-    processName: string;
-    processType: ProcessType;
-    processOrder: number;
-    isActive: boolean;
-}
-
-// Search
-interface SearchParams {
-    page: number;
-    size: number;
-    processCode: string;
-    processName: string;
-    isActive: boolean | null;
-}
-
-// 고정 등록/수정 폼 컴포넌트
-const ProcessForm: React.FC<{
-    visible: boolean;
-    onCancel: () => void;
-    onSave: (values: any) => void;
-    loading: boolean;
-    initialValues?: any;
-    processTypeOptions: { value: string; label: string }[];
-    data: any[];
-}> = ({
-          visible, onCancel, onSave, loading, initialValues, processTypeOptions, data
-      }) => {
+const ItemGrid = () => {
     const [form] = Form.useForm();
-
-    const handleProcessTypeChange = (value) => {
-        const count = data.filter(proc => proc.processType === value).length;
-        form.setFieldsValue({
-            processName: `${processTypeOptions.find(opt => opt.value === value)?.label}-${count + 1}`
-        });
-    };
-
-    useEffect(() => {
-        if (visible) {
-            form.resetFields();
-            if (initialValues) {
-                form.setFieldsValue(initialValues);
-            }
-        }
-    }, [visible, initialValues, form]);
-
-    return (
-        <Modal
-            title={initialValues ? '공정 수정' : '공정 등록'}
-            open={visible}
-            onOk={() => form.submit()}
-            onCancel={onCancel}
-            confirmLoading={loading}
-            okText="저장"
-            cancelText="취소"
-        >
-            <Form form={form} onFinish={onSave} initialValues={initialValues || {isActive: true}} layout="vertical">
-                <Form.Item name="processType" label="공정유형" rules={[{required: true, message: '공정유형을 선택하세요'}]}>
-                    <Select onChange={handleProcessTypeChange} placeholder="공정유형을 선택해주세요">
-                        {processTypeOptions.map((option) => (
-                            <Option key={option.value} value={option.value}>
-                                {option.label}
-                            </Option>
-                        ))}
-                    </Select>
-                </Form.Item>
-                <Form.Item name="processName" label="공정명" rules={[{required: true}]}>
-                    <Input placeholder="공정명을 입력해주세요"/>
-                </Form.Item>
-                <Form.Item name="isActive" label="사용여부" valuePropName="checked">
-                    <Switch checkedChildren="활성" unCheckedChildren="비활성"/>
-                </Form.Item>
-            </Form>
-        </Modal>
-    );
-};
-
-// SearchBar
-const SearchBar: React.FC<{
-    searchParams: SearchParams;
-    setSearchParams: (params: SearchParams) => void;
-    fetchDatas: () => void;
-}> = ({ searchParams, setSearchParams, fetchDatas }) => {
-    const [localParams, setLocalParams] = useState<SearchParams>(searchParams);
-
-    useEffect(() => {
-        fetchDatas();
-        // setLocalParams(searchParams);
-    }, [searchParams]);
-
-    const handleSearch = () => {
-        setSearchParams({...localParams, page: 0});
-        fetchDatas();
-    };
-
-    const handleReset = () => {
-        const resetParams = {page: 0, size: 10, processCode: '', processName: '', isActive: true};
-        setLocalParams(resetParams);
-        setSearchParams(resetParams);
-        fetchDatas();
-    };
-
-    const handleInputChange = (field: keyof SearchParams) => (e: any) => {
-        let value;
-        if (field === 'isActive') {
-            value = e === '' ? null : e === 'true';
-        } else {
-            if (e && e.target) {
-                value = e.target.value;
-            } else {
-                value = e === '';
-            }
-        }
-        setLocalParams(prev => ({
-            ...prev,
-            [field]: value,
-        }));
-    };
-
-    return (
-        <div style={{marginBottom: 16}}>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                    width: '100%',
-                }}
-            >
-                <Search
-                    placeholder="공정코드 검색"
-                    value={localParams.processCode}
-                    onChange={handleInputChange('processCode')}
-                    onSearch={handleSearch}
-                    enterButton
-                    allowClear
-                    style={{minWidth: 160, flex: '0 0 300px'}}
-                />
-                <Search
-                    placeholder="공정명 검색"
-                    value={localParams.processName}
-                    onChange={handleInputChange('processName')}
-                    onSearch={handleSearch}
-                    enterButton
-                    allowClear
-                    style={{minWidth: 160, flex: '0 0 300px'}}
-                />
-                <Select
-                    placeholder="활성/비활성 전체"
-                    style={{minWidth: 120, flex: '0 0 120px'}}
-                    value={localParams.isActive === null ? '' : String(localParams.isActive)}
-                    onChange={value => {
-                        handleInputChange('isActive')(value); // 상태 업데이트
-                    }}
-                >
-                    <Select.Option value="">전체</Select.Option>
-                    <Select.Option value="true">활성</Select.Option>
-                    <Select.Option value="false">비활성</Select.Option>
-                </Select>
-                <Button type="primary" onClick={handleSearch} style={{marginRight: 4}}>
-                    검색
-                </Button>
-                <Button onClick={handleReset}>
-                    초기화
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-// ProcessManagement
-const ProcessManagement = () => {
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [data, setData] = useState<Item[]>([]);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 10,
-        total: 0,
-    });
-    const [selectedProcess, setSelectedProcess] = useState<Item | null>(null);
-    const [editing, setEditing] = useState<Item | null>(null);
+    const [searchForm] = Form.useForm();
+    const [rowData, setRowData] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [processTypeOptions, setProcessTypeOptions] = useState<{ value: string; label: string }[]>([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const gridRef = useRef<any>(null);
 
-    const fetchProcessTypes = async () => {
-        try {
-            const response = await axios.get('/api/master/process/types');
-            setProcessTypeOptions(
-                (response.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))
-            );
-        } catch (err) {
-            setProcessTypeOptions([]);
-        }
-    };
+    useEffect(() => {
+        axios.get('/api/master/process/types')
+            .then(res => setProcessTypeOptions((res.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))))
+            .catch(() => setProcessTypeOptions([]));
+    }, []);
 
-    const [searchParams, setSearchParams] = useState<SearchParams>({
-        page: 0,
-        size: 10,
-        processCode: '',
-        processName: '',
-        isActive: true,
-    });
-
-    const fetchDatas = async () => {
+    const fetchItems = async (params = {}) => {
         setLoading(true);
         try {
-            const params = {
-                page: searchParams.page,
-                size: searchParams.size,
-                processCode: searchParams.processCode || undefined,
-                processName: searchParams.processName || undefined,
-                isActive: searchParams.isActive !== null ? searchParams.isActive : undefined
-            };
-            const response = await axios.get<PageResponse<Item>>('/api/master/process', {
-                params,
-                paramsSerializer: params => {
-                    return Object.entries(params)
-                        .filter(([_, value]) => value !== undefined)
-                        .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-                        .join('&');
-                }
-            });
-            const responseData = response.data;
-            setData(responseData.content);
-            setPagination(prev => ({
-                ...prev,
-                total: responseData.totalElements,
-                current: responseData.pageable.pageNumber + 1,
-                pageSize: responseData.pageable.pageSize,
-            }));
-        } catch (error) {
-            message.error('공정 데이터를 불러오는 중 오류가 발생했습니다.');
-            console.error('Error fetching items:', error);
+            const res = await axios.get('/api/master/process', { params: { page: 0, size: 1000, ...params } });
+            setRowData(res.data.content || []);
+        } catch {
+            setRowData([]);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        const fetchProcessTypes = async () => {
-            try {
-                const response = await axios.get('/api/master/process/types');
-                setProcessTypeOptions(
-                    (response.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))
-                );
-            } catch (err) {
-                setProcessTypeOptions([]);
-            }
-        };
-        fetchProcessTypes();
+        fetchItems();
     }, []);
 
-    useEffect(() => {
-        fetchDatas();
-    },  [searchParams.page, searchParams.size]);
+    const columnDefs = useMemo(() => [
+        {
+            headerName: '',
+            checkboxSelection: true,
+            headerCheckboxSelection: true,
+            width: 40,
+            pinned: 'left',
+            suppressMenu: true,
+            suppressMovable: true,
+        },
+        { headerName: 'ID', field: 'id', minWidth: 60, maxWidth: 80 },
+        { headerName: '공정코드', field: 'processCode', minWidth: 100, flex: 1 },
+        { headerName: '공정명', field: 'processName', minWidth: 120, flex: 2 },
+        {
+            headerName: '공정구분', field: 'processType', minWidth: 100, flex: 1,
+            valueFormatter: (params: any) => {
+                const found = processTypeOptions.find(opt => opt.value === params.value);
+                return found ? found.label : params.value;
+            }
+        },
+        { headerName: '사용여부', field: 'isActive', minWidth: 80, maxWidth: 100, valueFormatter: p => p.value ? '활성' : '비활성' },
+    ], [processTypeOptions]);
 
-    const columns: ColumnsType<Item> = [
-        {
-            title: '공정코드',
-            dataIndex: 'processCode',
-            key: 'processCode',
-        },
-        {
-            title: '공정명',
-            dataIndex: 'processName',
-            key: 'processName',
-        },
-        {
-            title: '공정유형',
-            dataIndex: 'processType',
-            key: 'processType',
-            render: (value: string) => {
-                const processType = processTypeOptions.find(item => item.value === value);
-                return processType ? processType.label : 'Unknown';
-            },
-        },
-/*        {
-            title: '공정순서',
-            dataIndex: 'processOrder',
-            key: 'processOrder',
-        },*/
-        {
-            title: '사용여부',
-            dataIndex: 'isActive',
-            key: 'isActive',
-            render: (value: boolean) => (value ? '활성' : '비활성'),
-        },
-        {
-            title: '관리',
-            key: 'action',
-            render: (_, record) => (
-                <Button
-                    type="link"
-                    onClick={() => {
-                        setIsModalVisible(true);
-                        setEditing(record);
-                    }}
-                >
-                    수정
-                </Button>
-            ),
-        }
-    ];
-
-    const handleTableChange = (pagination: any) => {
-        setSearchParams(prev => ({
-            ...prev,
-            page: pagination.current - 1,
-            size: pagination.pageSize,
-        }));
+    // 검색 핸들러
+    const onSearch = (values: any) => {
+        fetchItems(values);
     };
 
-    const handleSave = async (values: ProcessRequest) => {
+    // 추가 버튼
+    const handleAdd = () => {
+        setModalMode('add');
+        setEditingItem(null);
+        form.resetFields();
+        setModalVisible(true);
+    };
+
+    // 행 더블클릭 시 수정
+    const handleRowDoubleClicked = async (event: any) => {
+        setModalMode('edit');
+        setEditingItem(event.data);
+        setModalVisible(true);
         try {
-            setIsSubmitting(true);
-            if (editing) {
-                await axios.put(`/api/master/process/${editing.id}`, values, {
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                message.success('공정이 수정되었습니다.');
-            } else {
-                await axios.post('/api/master/process', values, {
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                message.success('공정이 등록되었습니다.');
+            const res = await axios.get(`/api/master/process/${event.data.id}`);
+            form.setFieldsValue(res.data);
+        } catch {
+            message.error('상세 정보를 불러오지 못했습니다');
+        }
+    };
+
+    // 체크박스 선택 변경
+    const onSelectionChanged = () => {
+        const selectedRows = gridRef.current?.api.getSelectedRows() || [];
+        setSelectedIds(selectedRows.map((row: any) => row.id));
+    };
+
+    // 일괄 삭제
+    const handleBatchDelete = async () => {
+        if (selectedIds.length === 0) return;
+        Modal.confirm({
+            title: '선택한 공정을 삭제하시겠습니까?',
+            content: `${selectedIds.length}개 항목`,
+            okText: '삭제',
+            okType: 'danger',
+            cancelText: '취소',
+            onOk: async () => {
+                try {
+                    await Promise.all(selectedIds.map(id => axios.delete(`/api/master/process/${id}`)));
+                    message.success('삭제되었습니다');
+                    setSelectedIds([]);
+                    fetchItems();
+                } catch {
+                    message.error('삭제 실패');
+                }
             }
-            setIsModalVisible(false);
-            setEditing(null);
-            fetchDatas();
+        });
+    };
+
+    // 추가/수정 저장
+    const onModalOk = async () => {
+        try {
+            const values = await form.validateFields();
+            if (modalMode === 'add') {
+                await axios.post('/api/master/process', values);
+                message.success('등록되었습니다');
+            } else if (editingItem) {
+                await axios.put(`/api/master/process/${editingItem.id}`, values);
+                message.success('수정되었습니다');
+            }
+            setModalVisible(false);
+            fetchItems();
         } catch (e) {
-            message.error('저장 중 오류가 발생했습니다.');
-        } finally {
-            setIsSubmitting(false);
+            // validation error
         }
     };
 
     return (
         <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Title level={4} style={{ margin: 0 }}>공정 관리</Title>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={() => { setIsModalVisible(true); setEditing(null); }}
-                >
-                    공정 등록
-                </Button>
+            <h4>공정 관리</h4>
+            {/* 검색 폼 및 추가/삭제 버튼 */}
+            <Form
+                form={searchForm}
+                layout="inline"
+                onFinish={onSearch}
+                style={{ marginBottom: 16 }}
+            >
+                <Form.Item name="processCode" label="공정코드">
+                    <Input placeholder="공정코드" allowClear />
+                </Form.Item>
+                <Form.Item name="processName" label="공정명">
+                    <Input placeholder="공정명" allowClear />
+                </Form.Item>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit">검색</Button>
+                </Form.Item>
+                <Form.Item>
+                    <Button type="primary" onClick={handleAdd}>추가</Button>
+                </Form.Item>
+                <Form.Item>
+                    <Button danger disabled={selectedIds.length === 0} onClick={handleBatchDelete}>삭제</Button>
+                </Form.Item>
+            </Form>
+
+            {/* AG Grid */}
+            <div className="ag-theme-alpine" style={{ width: '100%', height: 800 }}>
+                <AgGridReact
+                    ref={gridRef}
+                    rowData={rowData}
+                    columnDefs={columnDefs}
+                    defaultColDef={defaultColDef}
+                    rowSelection="multiple"
+                    suppressRowClickSelection={false}
+                    onRowDoubleClicked={handleRowDoubleClicked}
+                    onSelectionChanged={onSelectionChanged}
+                    loadingOverlayComponentParams={{ loadingMessage: '로딩 중...' }}
+                    overlayLoadingTemplate={loading ? '<span class=\"ag-overlay-loading-center\">로딩 중...</span>' : undefined}
+                />
             </div>
-            <SearchBar
-                searchParams={searchParams}
-                setSearchParams={setSearchParams}
-                fetchDatas={fetchDatas}
-            />
-            <ProcessForm
-                visible={isModalVisible}
-                onCancel={() => { setIsModalVisible(false); setEditing(null); }}
-                onSave={handleSave}
-                loading={isSubmitting}
-                initialValues={editing || undefined}
-                processTypeOptions={processTypeOptions}
-                data={data}
-            />
-            <Table
-                columns={columns}
-                dataSource={data}
-                rowKey="id"
-                pagination={{
-                    ...pagination,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showTotal: (total, range) => `${range[0]}-${range[1]} / 총 ${total}건`,
-                }}
-                loading={loading}
-                onChange={handleTableChange}
-            />
+
+            {/* 추가/수정 모달 */}
+            <Modal
+                title={modalMode === 'add' ? '공정 추가' : '공정 수정'}
+                open={modalVisible}
+                onOk={onModalOk}
+                onCancel={() => setModalVisible(false)}
+                okText="저장"
+                cancelText="취소"
+                destroyOnClose
+            >
+                <Form
+                    form={form}
+                    layout="vertical"
+                    initialValues={{ isActive: true, safetyStock: 0 }}
+                >
+                    <Form.Item name="processCode" label="공정코드">
+                        <Input placeholder="공정코드" disabled/>
+                    </Form.Item>
+                    <Form.Item name="processName" label="공정명" rules={[{ required: true, message: '공정명을 입력해주세요' }]}>
+                        <Input placeholder="공정명" />
+                    </Form.Item>
+                    <Form.Item name="processType" label="공정구분" rules={[{ required: true, message: '공정구분을 선택해주세요' }]}>
+                        <Select placeholder="공정구분" options={processTypeOptions} />
+                    </Form.Item>
+                    <Form.Item name="isActive" label="사용여부" valuePropName="checked">
+                        <Switch checkedChildren="활성" unCheckedChildren="비활성" />
+                    </Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 };
 
-export default ProcessManagement;
+export default ItemGrid;

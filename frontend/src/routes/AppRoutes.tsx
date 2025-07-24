@@ -23,6 +23,7 @@ const Equipment = lazy(() => import('@/pages/equipment'));
 const Inventory = lazy(() => import('@/pages/inventory'));
 const Worker = lazy(() => import('@/pages/worker'));
 const Settings = lazy(() => import('@/pages/settings'));
+// const ItemManagement = lazy(() => import('@/pages/master/item'));
 const ItemManagement = lazy(() => import('@/pages/master/item'));
 const ProductManagement = lazy(() => import('@/pages/master/product'));
 const ProcessManagement = lazy(() => import('@/pages/master/process'));

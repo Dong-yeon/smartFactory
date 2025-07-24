@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-    Table,
     message,
     Typography,
     Button,
@@ -17,6 +16,10 @@ import {
 } from 'antd';
 import {PlusOutlined} from '@ant-design/icons';
 import axios from 'axios';
+import { findNodeById, addChildToTree } from './utils';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 const { Search } = Input;
 const {Title} = Typography;
@@ -71,8 +74,8 @@ const ProcessManagement = () => {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [treeData, setTreeData] = useState([]);
     const [processMasterList, setProcessMasterList] = useState<any[]>([]);
-    const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
-    const [inlineRowData, setInlineRowData] = useState<any>({});
+    const [editingRowKeys, setEditingRowKeys] = useState<string[]>([]);
+    const [inlineRowDataMap, setInlineRowDataMap] = useState<{ [key: string]: any }>({});
 
     const fetchDatas = async () => {
         try {
@@ -183,43 +186,40 @@ const ProcessManagement = () => {
             isNew: true,
             processOrder: parentId ? (findNodeById(treeData, parentId)?.children?.length || 0) + 1 : treeData.length + 1
         };
-        // 트리 데이터에 임시 행 추가
         if (parentId) {
-            // 세부공정 추가
             setTreeData(prev => addChildToTree(prev, parentId, newRow));
         } else {
             setTreeData(prev => [...prev, newRow]);
         }
-        setEditingRowKey(newRowKey);
-        setInlineRowData(newRow);
+        setEditingRowKeys(prev => [...prev, newRowKey]);
+        setInlineRowDataMap(prev => ({ ...prev, [newRowKey]: newRow }));
     };
 
-    function addChildToTree(tree, parentId, child) {
-        return tree.map(node => {
-            if (node.id === parentId) {
-                return { ...node, children: [...(node.children || []), child] }; // 맨 뒤에 추가
-            } else if (node.children && node.children.length > 0) {
-                return { ...node, children: addChildToTree(node.children, parentId, child) };
-            }
-            return node;
-        });
-    }
-
     // 공정코드 선택 시 상세정보 자동 채우기
-    const handleProcessCodeSelect = (code: string) => {
+    const handleProcessCodeSelect = (code: string, rowKey: string) => {
         const selected = processMasterList.find((p) => p.processCode === code);
-        setInlineRowData(prev => ({
+        setInlineRowDataMap(prev => ({
             ...prev,
-            processCode: code,
-            processName: selected?.processName || '',
-            processTime: 0
+            [rowKey]: {
+                ...prev[rowKey],
+                processCode: code,
+                processName: selected?.processName || '',
+                processTime: 0
+            }
         }));
     };
 
+    // 인라인 편집 진입
+    const handleInlineEdit = (record: any) => {
+        setEditingRowKeys(prev => prev.includes(record.key) ? prev : [...prev, record.key]);
+        setInlineRowDataMap(prev => ({ ...prev, [record.key]: record }));
+    };
+
     // 인라인 저장
-    const handleInlineSave = async () => {
+    const handleInlineSave = async (rowKey: string) => {
         try {
             setLoading(true);
+            const inlineRowData = inlineRowDataMap[rowKey];
             const payload = {
                 ...inlineRowData,
                 parentId: inlineRowData.parentId,
@@ -229,18 +229,20 @@ const ProcessManagement = () => {
                 processName: inlineRowData.processName,
                 processTime: inlineRowData.processTime,
                 itemId: selectedProduct?.id,
-                productPorcessId: inlineRowData.id
+                productPorcessId: inlineRowData.id,
+                id: inlineRowData.id && typeof inlineRowData.id === 'string' && inlineRowData.id.startsWith('new_') ? null : inlineRowData.id
             };
-            // console.log("payload:", payload);
             if (inlineRowData.id && !String(inlineRowData.id).startsWith('new_')) {
-                // update
                 await axios.put('/api/master/product-process', payload);
             } else {
-                // create
                 await axios.post('/api/master/product-process', payload);
             }
-            setEditingRowKey(null);
-            setInlineRowData({});
+            setEditingRowKeys(prev => prev.filter(k => k !== rowKey));
+            setInlineRowDataMap(prev => {
+                const newMap = { ...prev };
+                delete newMap[rowKey];
+                return newMap;
+            });
             fetchProcessListByProduct(selectedProduct?.id!);
             message.success('공정이 저장되었습니다.');
         } catch (e) {
@@ -251,28 +253,22 @@ const ProcessManagement = () => {
     };
 
     // 인라인 취소
-    const handleInlineCancel = () => {
-        setEditingRowKey(null);
-        setInlineRowData({});
+    const handleInlineCancel = (rowKey: string) => {
+        setEditingRowKeys(prev => prev.filter(k => k !== rowKey));
+        setInlineRowDataMap(prev => {
+            const newMap = { ...prev };
+            delete newMap[rowKey];
+            return newMap;
+        });
         fetchProcessListByProduct(selectedProduct?.id!);
     };
 
-    // 제품 리스트 테이블 컬럼
+    // AG Grid 컬럼 정의
     const productColumns = [
-        {
-            title: '제품코드',
-            dataIndex: 'itemCode',
-            key: 'itemCode',
-            width: 80,
-            align: 'center',
-        },
-        {
-            title: '제품명',
-            dataIndex: 'itemName',
-            key: 'itemName',
-            width: 120,
-            align: 'center',
-        },
+        { headerName: 'ID', field: 'id', width: 80 },
+        { headerName: '품목코드', field: 'itemCode', flex: 1 },
+        { headerName: '품목명', field: 'itemName', flex: 1 },
+        { headerName: '사용여부', field: 'isActive', width: 100, valueFormatter: p => p.value ? '활성' : '비활성' },
     ];
 
     // 공정 리스트 트리 테이블 컬럼
@@ -291,12 +287,12 @@ const ProcessManagement = () => {
             key: 'processCode',
             align: 'center',
             render: (value: any, record: any) =>
-                record.key === editingRowKey ? (
+                editingRowKeys.includes(record.key) ? (
                     <Select
                         showSearch
                         style={{ minWidth: 120 }}
-                        value={inlineRowData.processCode}
-                        onChange={handleProcessCodeSelect}
+                        value={inlineRowDataMap[record.key]?.processCode}
+                        onChange={(val) => handleProcessCodeSelect(val, record.key)}
                         placeholder="공정코드 선택"
                         optionFilterProp="children"
                         filterOption={(input, option) =>
@@ -308,10 +304,7 @@ const ProcessManagement = () => {
                         ))}
                     </Select>
                 ) : (
-                    <span onClick={() => {
-                        setEditingRowKey(record.key);
-                        setInlineRowData(record);
-                    }} style={{ cursor: 'pointer', color: '#1677ff', textDecoration: 'underline' }}>{value}</span>
+                    <span onClick={() => handleInlineEdit(record)} style={{ cursor: 'pointer', color: '#1677ff', textDecoration: 'underline' }}>{value}</span>
                 ),
         },
         {
@@ -320,10 +313,10 @@ const ProcessManagement = () => {
             key: 'processName',
             align: 'center',
             render: (value: any, record: any) =>
-                record.key === editingRowKey ? (
+                editingRowKeys.includes(record.key) ? (
                     <Input
-                        value={inlineRowData.processName}
-                        disabled
+                        value={inlineRowDataMap[record.key]?.processName}
+                        onChange={e => setInlineRowDataMap(prev => ({ ...prev, [record.key]: { ...prev[record.key], processName: e.target.value } }))}
                         placeholder="공정명"
                     />
                 ) : (
@@ -336,12 +329,12 @@ const ProcessManagement = () => {
             key: 'processTime',
             align: 'center',
             render: (value: any, record: any) =>
-                record.key === editingRowKey ? (
+                editingRowKeys.includes(record.key) ? (
                     <InputNumber
-                        value={inlineRowData.processTime}
+                        value={inlineRowDataMap[record.key]?.processTime}
                         min={0}
                         step={1}
-                        onChange={val => setInlineRowData(prev => ({ ...prev, processTime: val }))}
+                        onChange={val => setInlineRowDataMap(prev => ({ ...prev, [record.key]: { ...prev[record.key], processTime: val } }))}
                         placeholder="시간"
                     />
                 ) : (
@@ -353,10 +346,10 @@ const ProcessManagement = () => {
             key: 'actions',
             width: 120,
             render: (_: any, record: any) =>
-                record.key === editingRowKey ? (
+                editingRowKeys.includes(record.key) ? (
                     <>
-                        <Button type="link" onClick={handleInlineSave} loading={loading}>저장</Button>
-                        <Button type="link" onClick={handleInlineCancel}>취소</Button>
+                        <Button type="link" onClick={() => handleInlineSave(record.key)} loading={loading}>저장</Button>
+                        <Button type="link" onClick={() => handleInlineCancel(record.key)}>취소</Button>
                     </>
                 ) : (
                     <Button type="link" size="small" onClick={() => handleAddProcessInline(record.id)}>세부공정 추가</Button>
@@ -365,58 +358,57 @@ const ProcessManagement = () => {
     ];
 
     return (
-        <div style={{ padding: 24 }}>
-            <Row gutter={24}>
-                {/* 좌측: 제품 리스트 */}
-                <Col span={6}>
-                    <div>
-                        <Title level={5} style={{ margin: 0 }}>제품 리스트</Title>
-                        <Table
-                            columns={productColumns}
-                            dataSource={data}
-                            rowKey="id"
+        <div>
+            <div style={{ height: 400, width: '100%', marginBottom: 24 }} className="ag-theme-alpine">
+                <AgGridReact
+                    rowData={data}
+                    columnDefs={productColumns}
+                    pagination={true}
+                    paginationPageSize={pagination.pageSize}
+                    onPaginationChanged={params => {
+                        const api = params.api;
+                        setPagination(prev => ({
+                            ...prev,
+                            current: api.paginationGetCurrentPage() + 1,
+                            pageSize: api.paginationGetPageSize(),
+                        }));
+                    }}
+                    domLayout="autoHeight"
+                    suppressRowClickSelection={true}
+                    rowSelection="single"
+                    onRowClicked={e => setSelectedProduct(e.data)}
+                    overlayNoRowsTemplate="데이터가 없습니다."
+                />
+            </div>
+            {/* 우측: 공정 트리 + 폼/테이블 */}
+            <Col span={18}>
+                <div>
+                    <Title level={5} style={{ margin: 0 }}>
+                        공정 리스트
+                        <Button
+                            type="primary"
                             size="small"
-                            pagination={false}
-                            bordered
-                            rowClassName={(record) => record.id === selectedProduct?.id ? 'selected-row' : ''}
-                            onRow={(record) => ({
-                                onClick: () => handleProductRowClick(record),
-                                style: { cursor: 'pointer' },
-                            })}
-                            style={{ marginTop: 8, background: '#fff', borderRadius: 4 }}
-                        />
-                    </div>
-                </Col>
-                {/* 우측: 공정 트리 + 폼/테이블 */}
-                <Col span={18}>
-                    <div>
-                        <Title level={5} style={{ margin: 0 }}>
-                            공정 리스트
-                            <Button
-                                type="primary"
-                                size="small"
-                                style={{ marginLeft: 12 }}
-                                icon={<PlusOutlined />}
-                                onClick={handleAddProcess}
-                            >
-                                행 추가
-                            </Button>
-                        </Title>
-                        <Table
-                            columns={processColumns}
-                            dataSource={convertToTreeData(treeData)}
-                            rowKey="id"
-                            pagination={false}
-                            loading={loading}
-                            expandable={{
-                                childrenColumnName: 'children',
-                                defaultExpandAllRows: true,
-                            }}
-                            bordered
-                        />
-                    </div>
-                </Col>
-            </Row>
+                            style={{ marginLeft: 12 }}
+                            icon={<PlusOutlined />}
+                            onClick={handleAddProcess}
+                        >
+                            행 추가
+                        </Button>
+                    </Title>
+                    <Table
+                        columns={processColumns}
+                        dataSource={convertToTreeData(treeData)}
+                        rowKey="id"
+                        pagination={false}
+                        loading={loading}
+                        expandable={{
+                            childrenColumnName: 'children',
+                            defaultExpandAllRows: true,
+                        }}
+                        bordered
+                    />
+                </div>
+            </Col>
         </div>
     );
 };
