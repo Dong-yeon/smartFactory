@@ -5,6 +5,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import axios from 'axios';
 import { Form, Input, Select, Button, Modal, Space, message, Switch, InputNumber } from 'antd';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import { getCommonContextMenuItems } from '../../../components/aggrid/getContextMenuItems';
 
 ModuleRegistry.registerModules([ AllCommunityModule ]);
 
@@ -66,6 +67,7 @@ const ItemGrid = () => {
       pinned: 'left',
       suppressMenu: true,
       suppressMovable: true,
+      filter: false, // 필터 비활성화 추가
     },
     { headerName: 'ID', field: 'id', minWidth: 60, maxWidth: 80 },
     { headerName: '품목코드', field: 'itemCode', minWidth: 100, flex: 1 },
