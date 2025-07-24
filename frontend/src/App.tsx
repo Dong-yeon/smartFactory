@@ -3,6 +3,7 @@ import { ConfigProvider, theme } from 'antd';
 import koKR from 'antd/locale/ko_KR';
 import AppRoutes from './routes/AppRoutes';
 import './App.less';
+import './custom.css';
 
 function App() {
   return (
