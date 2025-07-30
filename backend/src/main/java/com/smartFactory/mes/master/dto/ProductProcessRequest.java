@@ -12,5 +12,6 @@ public class ProductProcessRequest {
     private Long parentId; // 상위 ProductProcess ID (트리구조)
     private Integer processOrder; // 제품 내 공정 순서
     private Integer processTime;
+    private Integer revisionNo;
     private Boolean isActive = true;
 }

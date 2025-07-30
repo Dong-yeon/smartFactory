@@ -52,6 +52,9 @@ public class ProductProcess {
     @Column(name = "process_time")
     private Integer processTime;
 
+    @Column(name = "revision_no", nullable = false)
+    private Integer revisionNo;
+
     // 사용여부
     @Column(nullable = false)
     private Boolean isActive = true;

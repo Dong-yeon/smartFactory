@@ -1,227 +1,142 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { Form, Input, Select, Button, Modal, Space, message, Switch, InputNumber } from 'antd';
-import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { getCommonContextMenuItems } from '../../../components/aggrid/getContextMenuItems';
-
-ModuleRegistry.registerModules([ AllCommunityModule ]);
-
+import ProcessGrid from './ProcessGrid.tsx';
 const { Option } = Select;
 
-const defaultColDef = {
-    resizable: true,
-    sortable: true,
-    filter: true,
+const ProcessGridContainer = () => {
+  const [form] = Form.useForm();
+  const [searchForm] = Form.useForm();
+  const [rowData, setRowData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [processTypeOptions, setProcessTypeOptions] = useState<{ value: string; label: string }[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const gridViewRef = useRef<any>(null);
+  const dataProviderRef = useRef<any>(null);
+  const deletedRowIdsRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    axios.get('/api/master/process/types')
+      .then(res => setProcessTypeOptions((res.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))))
+      .catch(() => setProcessTypeOptions([]));
+  }, []);
+
+  const fetchItems = async (params = {}) => {
+    setLoading(true);
+    try {
+      const res = await axios.get('/api/master/process', { params: { page: 0, size: 1000, ...params } });
+      setRowData(res.data.content || []);
+    } catch {
+      setRowData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  // 검색 핸들러
+  const onSearch = (values: any) => {
+    fetchItems(values);
+  };
+
+  const handleAddRow = () => {
+    if (gridViewRef.current && dataProviderRef.current) {
+      dataProviderRef.current.addRow({
+        // processCode: '',
+        processName: '',
+        processType: processTypeOptions[0]?.value ?? null,
+        processOrder: '',
+        isActive: true
+      });
+    }
+  };
+
+  const handleRemoveRows = () => {
+    if (gridViewRef.current && dataProviderRef.current) {
+      const checkedRows = gridViewRef.current.getCheckedRows();
+      const dataRows = checkedRows.map(row => gridViewRef.current.getDataRow(row));
+      // 삭제할 id 저장
+      dataRows.forEach(row => {
+        const data = dataProviderRef.current.getJsonRow(row);
+        if (data.id) deletedRowIdsRef.current.push(data.id);
+      });
+      // 실제로 데이터에서 제거
+      dataProviderRef.current.removeRows(dataRows);
+    }
+  };
+
+  const handleSave = async () => {
+    if (gridViewRef.current) {
+      gridViewRef.current.commit(true);
+    }
+    if (!dataProviderRef.current) return;
+
+    const createdRows = dataProviderRef.current.getStateRows('created');
+    const updatedRows = dataProviderRef.current.getStateRows('updated');
+
+    try {
+      for (const row of createdRows) {
+        const data = dataProviderRef.current.getJsonRow(row);
+        await axios.post('/api/master/process', data);
+      }
+      for (const row of updatedRows) {
+        const data = dataProviderRef.current.getJsonRow(row);
+        await axios.put(`/api/master/process/${data.id}`, data);
+      }
+      for (const id of deletedRowIdsRef.current) {
+        await axios.delete(`/api/master/process/${id}`);
+      }
+      deletedRowIdsRef.current = []; // 저장 후 초기화
+      message.success('저장되었습니다');
+      fetchItems();
+      dataProviderRef.current.clearRowStates();
+    } catch (e) {
+      message.error('저장 실패');
+    }
+  };
+
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', height: '85vh', boxSizing: 'border-box' }}>
+      <h4>공정 관리</h4>
+      {/* 검색 폼 및 추가/삭제 버튼 */}
+      <Form
+        form={searchForm}
+        layout="inline"
+        onFinish={onSearch}
+        style={{ marginBottom: 16 }}
+      >
+        <Form.Item name="itemCode" label="공정코드">
+          <Input placeholder="공정코드" allowClear />
+        </Form.Item>
+        <Form.Item name="itemName" label="공정명">
+          <Input placeholder="공정명" allowClear />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit">검색</Button>
+        </Form.Item>
+        <Button onClick={handleAddRow}>행 추가</Button>
+        <Button onClick={handleRemoveRows}>행 삭제</Button>
+        <Button onClick={handleSave}>저장</Button>
+      </Form>
+
+      {/* RealGrid */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <ProcessGrid
+          rowData={rowData}
+          processTypeOptions={processTypeOptions}
+          onSelectIds={setSelectedIds}
+          gridViewRef={gridViewRef}
+          dataProviderRef={dataProviderRef}
+        />
+      </div>
+    </div>
+  );
 };
 
-const ItemGrid = () => {
-    const [form] = Form.useForm();
-    const [searchForm] = Form.useForm();
-    const [rowData, setRowData] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [processTypeOptions, setProcessTypeOptions] = useState<{ value: string; label: string }[]>([]);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-    const [editingItem, setEditingItem] = useState<any>(null);
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const gridRef = useRef<any>(null);
-
-    useEffect(() => {
-        axios.get('/api/master/process/types')
-            .then(res => setProcessTypeOptions((res.data as any[]).map((t: any) => ({ value: t.code, label: t.name }))))
-            .catch(() => setProcessTypeOptions([]));
-    }, []);
-
-    const fetchItems = async (params = {}) => {
-        setLoading(true);
-        try {
-            const res = await axios.get('/api/master/process', { params: { page: 0, size: 1000, ...params } });
-            setRowData(res.data.content || []);
-        } catch {
-            setRowData([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchItems();
-    }, []);
-
-    const columnDefs = useMemo(() => [
-        {
-            headerName: '',
-            checkboxSelection: true,
-            headerCheckboxSelection: true,
-            width: 40,
-            pinned: 'left',
-            suppressMenu: true,
-            suppressMovable: true,
-            filter: false, // 필터 비활성화 추가
-        },
-        { headerName: 'ID', field: 'id', minWidth: 60, maxWidth: 80 },
-        { headerName: '공정코드', field: 'processCode', minWidth: 100, flex: 1 },
-        { headerName: '공정명', field: 'processName', minWidth: 120, flex: 2 },
-        {
-            headerName: '공정구분', field: 'processType', minWidth: 100, flex: 1,
-            valueFormatter: (params: any) => {
-                const found = processTypeOptions.find(opt => opt.value === params.value);
-                return found ? found.label : params.value;
-            }
-        },
-        { headerName: '사용여부', field: 'isActive', minWidth: 80, maxWidth: 100, valueFormatter: p => p.value ? '활성' : '비활성' },
-    ], [processTypeOptions]);
-
-    // 검색 핸들러
-    const onSearch = (values: any) => {
-        fetchItems(values);
-    };
-
-    // 추가 버튼
-    const handleAdd = () => {
-        setModalMode('add');
-        setEditingItem(null);
-        form.resetFields();
-        setModalVisible(true);
-    };
-
-    // 행 더블클릭 시 수정
-    const handleRowDoubleClicked = async (event: any) => {
-        setModalMode('edit');
-        setEditingItem(event.data);
-        setModalVisible(true);
-        try {
-            const res = await axios.get(`/api/master/process/${event.data.id}`);
-            form.setFieldsValue(res.data);
-        } catch {
-            message.error('상세 정보를 불러오지 못했습니다');
-        }
-    };
-
-    // 체크박스 선택 변경
-    const onSelectionChanged = () => {
-        const selectedRows = gridRef.current?.api.getSelectedRows() || [];
-        setSelectedIds(selectedRows.map((row: any) => row.id));
-    };
-
-    // 일괄 삭제
-    const handleBatchDelete = async () => {
-        if (selectedIds.length === 0) return;
-        Modal.confirm({
-            title: '선택한 공정을 삭제하시겠습니까?',
-            content: `${selectedIds.length}개 항목`,
-            okText: '삭제',
-            okType: 'danger',
-            cancelText: '취소',
-            onOk: async () => {
-                try {
-                    await Promise.all(selectedIds.map(id => axios.delete(`/api/master/process/${id}`)));
-                    message.success('삭제되었습니다');
-                    setSelectedIds([]);
-                    fetchItems();
-                } catch {
-                    message.error('삭제 실패');
-                }
-            }
-        });
-    };
-
-    // 추가/수정 저장
-    const onModalOk = async () => {
-        try {
-            const values = await form.validateFields();
-            if (modalMode === 'add') {
-                await axios.post('/api/master/process', values);
-                message.success('등록되었습니다');
-            } else if (editingItem) {
-                await axios.put(`/api/master/process/${editingItem.id}`, values);
-                message.success('수정되었습니다');
-            }
-            setModalVisible(false);
-            fetchItems();
-        } catch (e) {
-            // validation error
-        }
-    };
-
-    return (
-        <div style={{ padding: 24 }}>
-            <h4>공정 관리</h4>
-            {/* 검색 폼 및 추가/삭제 버튼 */}
-            <Form
-                form={searchForm}
-                layout="inline"
-                onFinish={onSearch}
-                style={{ marginBottom: 16 }}
-            >
-                <Form.Item name="processCode" label="공정코드">
-                    <Input placeholder="공정코드" allowClear />
-                </Form.Item>
-                <Form.Item name="processName" label="공정명">
-                    <Input placeholder="공정명" allowClear />
-                </Form.Item>
-                <Form.Item>
-                    <Button type="primary" htmlType="submit">검색</Button>
-                </Form.Item>
-                <Form.Item>
-                    <Button type="primary" onClick={handleAdd}>추가</Button>
-                </Form.Item>
-                <Form.Item>
-                    <Button danger disabled={selectedIds.length === 0} onClick={handleBatchDelete}>삭제</Button>
-                </Form.Item>
-            </Form>
-
-            {/* AG Grid */}
-            <div className="ag-theme-alpine" style={{ width: '100%', height: 800 }}>
-                <AgGridReact
-                    ref={gridRef}
-                    rowData={rowData}
-                    columnDefs={columnDefs}
-                    defaultColDef={defaultColDef}
-                    rowSelection="multiple"
-                    suppressRowClickSelection={false}
-                    onRowDoubleClicked={handleRowDoubleClicked}
-                    onSelectionChanged={onSelectionChanged}
-                    loadingOverlayComponentParams={{ loadingMessage: '로딩 중...' }}
-                    overlayLoadingTemplate={loading ? '<span class=\"ag-overlay-loading-center\">로딩 중...</span>' : undefined}
-                    getContextMenuItems={getCommonContextMenuItems}
-                />
-            </div>
-
-            {/* 추가/수정 모달 */}
-            <Modal
-                title={modalMode === 'add' ? '공정 추가' : '공정 수정'}
-                open={modalVisible}
-                onOk={onModalOk}
-                onCancel={() => setModalVisible(false)}
-                okText="저장"
-                cancelText="취소"
-                destroyOnClose
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    initialValues={{ isActive: true, safetyStock: 0 }}
-                >
-                    <Form.Item name="processCode" label="공정코드">
-                        <Input placeholder="공정코드" disabled/>
-                    </Form.Item>
-                    <Form.Item name="processName" label="공정명" rules={[{ required: true, message: '공정명을 입력해주세요' }]}>
-                        <Input placeholder="공정명" />
-                    </Form.Item>
-                    <Form.Item name="processType" label="공정구분" rules={[{ required: true, message: '공정구분을 선택해주세요' }]}>
-                        <Select placeholder="공정구분" options={processTypeOptions} />
-                    </Form.Item>
-                    <Form.Item name="isActive" label="사용여부" valuePropName="checked">
-                        <Switch checkedChildren="활성" unCheckedChildren="비활성" />
-                    </Form.Item>
-                </Form>
-            </Modal>
-        </div>
-    );
-};
-
-export default ItemGrid;
+export default ProcessGridContainer;

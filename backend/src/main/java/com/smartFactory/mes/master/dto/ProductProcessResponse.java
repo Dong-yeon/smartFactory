@@ -18,6 +18,7 @@ public class ProductProcessResponse {
     private Long parentId;
     private Integer processOrder;
     private Integer processTime;
+    private Integer revisionNo;
     private Boolean isActive;
     private List<ProductProcessResponse> children;
     private LocalDateTime createdAt;
