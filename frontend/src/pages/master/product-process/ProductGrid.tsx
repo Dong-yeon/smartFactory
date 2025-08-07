@@ -4,18 +4,22 @@ import * as RealGrid from "realgrid";
 
 interface ItemGridProps {
     rowData: any[];
-    onSelectIds: (ids: number[]) => void;
+    onSelectItem: (itemCode: string, item: any) => void;
     gridViewRef: React.MutableRefObject<any>;
     dataProviderRef: React.MutableRefObject<any>;
+    itemTypeOptions: { value: string; label: string }[];
+    itemUnitOptions: { value: string; label: string }[];
+    containerId: string;
 }
 
 const ProductGrid: React.FC<ItemGridProps> = ({
     rowData,
     itemTypeOptions,
     itemUnitOptions,
-    onSelectIds,
+    onSelectItem,
     gridViewRef,
-    dataProviderRef
+    dataProviderRef,
+    containerId
 }) => {
     useEffect(() => {
         let rafId: number;
@@ -27,13 +31,19 @@ const ProductGrid: React.FC<ItemGridProps> = ({
             rafId = window.requestAnimationFrame(() => {
                 if (itemTypeOptions && itemTypeOptions.length > 0 && itemUnitOptions && itemUnitOptions.length > 0) {
                     mountGridWhenReady();
+                    gridViewRef.current.onCellClicked = function(grid, clickData) {
+                        if (clickData.cellType === "data") {
+                          const item = dataProviderRef.current.getJsonRow(clickData.dataRow);
+                          onSelectItem && onSelectItem(item.itemCode, item); 
+                        }
+                      };
                 }
             });
             return () => {
                 window.cancelAnimationFrame(rafId);
             };
         }
-    }, [rowData, itemTypeOptions, itemUnitOptions, onSelectIds]);
+    }, [rowData, itemTypeOptions, itemUnitOptions]);
 
     const mountGridWhenReady = () => {
         const el = gridContainerRef.current;
@@ -53,28 +63,22 @@ const ProductGrid: React.FC<ItemGridProps> = ({
 
                 const columns = [
                     // {name: 'id', fieldName: 'id', header: 'ID', fillWidth: 60, editable: false},
-                    {name: 'itemCode', fieldName: 'itemCode', header: '품목코드', fillWidth: 100},
-                    {name: 'itemName', fieldName: 'itemName', header: '품목명', fillWidth: 120},
+                    {name: 'itemCode', fieldName: 'itemCode', header: '품목코드', fillWidth: 100, editable: false},
+                    {name: 'itemName', fieldName: 'itemName', header: '품목명', fillWidth: 120, editable: false},
                     {name: 'itemType', fieldName: 'itemType', header: '품목구분', fillWidth: 100, editable: false,
                         displayCallback: function(grid, index, value) {
                             const option = itemTypeOptions.find(o => o.value === value);
                             return option ? option.label : value;
+                        }
+                    },
+                    {name: 'spec', fieldName: 'spec', header: '규격/모델', fillWidth: 100, editable: false},
+                    {name: 'unit', fieldName: 'unit', header: '단위', fillWidth: 60, editable: false,
+                        displayCallback: function(grid, index, value) {
+                            const option = itemUnitOptions.find(o => o.value === value);
+                            return option ? option.label : value;
                         },
-                        editor: {
-                            type: 'dropdown',
-                            values: itemTypeOptions.map(o => o.value),
-                            labels: itemTypeOptions.map(o => o.label)
-                        }
                     },
-                    {name: 'spec', fieldName: 'spec', header: '규격/모델', fillWidth: 100},
-                    {name: 'unit', fieldName: 'unit', header: '단위', fillWidth: 60,
-                        editor: {
-                            type: 'dropdown',
-                            values: itemUnitOptions.map(o => o.value),
-                            labels: itemUnitOptions.map(o => o.label)
-                        }
-                    },
-                    {name: 'safetyStock', fieldName: 'safetyStock', header: '안전재고', fillWidth: 120},
+                    {name: 'safetyStock', fieldName: 'safetyStock', header: '안전재고', fillWidth: 120, editable: false},
                     // {name: 'description', fieldName: 'description', header: '비고', fillWidth: 120},
                     {
                         name: 'isActive',
@@ -102,20 +106,6 @@ const ProductGrid: React.FC<ItemGridProps> = ({
 
                 gridViewRef.current = gridView;
                 dataProviderRef.current = dataProvider;
-
-                gridView.onItemChecked = function (grid, checkedRow) {
-                    // id 컬럼값 직접 얻기
-                    const id = gridView.getValue(checkedRow, "id");
-                    if (id === undefined) return;
-
-                    onSelectIds(prevSelected => {
-                        if (prevSelected.includes(id)) {
-                            return prevSelected.filter(_id => _id !== id);
-                        } else {
-                            return [...prevSelected, id];
-                        }
-                    });
-                };
             }
         }
     }
@@ -130,7 +120,7 @@ const ProductGrid: React.FC<ItemGridProps> = ({
 
     return (
         <div style={{width: '100%', height: '100%'}}>
-            <div ref={gridContainerRef} id="realgrid-product-container" style={{width: '100%', height: '100%'}}/>
+            <div ref={gridContainerRef} id={containerId} style={{width: '100%', height: '100%'}}/>
         </div>
     );
 };

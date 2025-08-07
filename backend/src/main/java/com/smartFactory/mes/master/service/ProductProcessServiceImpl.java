@@ -24,65 +24,32 @@ public class ProductProcessServiceImpl implements ProductProcessService {
 
 	@Override
 	@Transactional
-	public ProductProcessResponse createProductProcess(ProductProcessRequest request) {
-		Item item = itemRepository.findById(request.getItemId())
-				.orElseThrow(() -> new IllegalArgumentException("Item not found: " + request.getItemId()));
-		Process process = processRepository.findByProcessCode(request.getProcessCode())
-				.orElseThrow(() -> new IllegalArgumentException("Process not found: " + request.getProcessCode()));
-		ProductProcess parent = null;
-		if (request.getParentId() != null) {
-			parent = productProcessRepository.findById(request.getParentId())
-					.orElseThrow(() -> new IllegalArgumentException("Parent ProductProcess not found: " + request.getParentId()));
+	public List<ProductProcessResponse> createProductProcesses(List<ProductProcessRequest> requestList) {
+		List<ProductProcessResponse> responses = new ArrayList<>();
+		for (ProductProcessRequest request : requestList) {
+			Item item = itemRepository.findById(request.getItemId())
+					.orElseThrow(() -> new IllegalArgumentException("Item not found: " + request.getItemId()));
+			Process process = processRepository.findByProcessCode(request.getProcessCode())
+					.orElseThrow(() -> new IllegalArgumentException("Process not found: " + request.getProcessCode()));
+			ProductProcess parent = null;
+			if (request.getParentId() != null) {
+				parent = productProcessRepository.findById(request.getParentId())
+						.orElseThrow(() -> new IllegalArgumentException("Parent ProductProcess not found: " + request.getParentId()));
+			}
+			ProductProcess productProcess = ProductProcess.builder()
+					.item(item)
+					.process(process)
+					.parent(parent)
+					.processCode(request.getProcessCode())
+					.processName(request.getProcessName())
+					.processOrder(request.getProcessOrder())
+					.processTime(request.getProcessTime())
+					.isActive(request.getIsActive() != null ? request.getIsActive() : true)
+					.build();
+			ProductProcess saved = productProcessRepository.save(productProcess);
+			responses.add(toResponse(saved));
 		}
-		ProductProcess productProcess = ProductProcess.builder()
-				.item(item)
-				.process(process)
-				.parent(parent)
-				.processCode(request.getProcessCode())
-				.processName(request.getProcessName())
-				.processOrder(request.getProcessOrder())
-				.processTime(request.getProcessTime())
-				.isActive(request.getIsActive() != null ? request.getIsActive() : true)
-				.build();
-		ProductProcess saved = productProcessRepository.save(productProcess);
-		return toResponse(saved);
-	}
-
-	@Transactional
-	public ProductProcessResponse updateProductProcess(ProductProcessRequest request) {
-		Long id = request.getId();
-		ProductProcess productProcess = productProcessRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("ProductProcess not found: " + id));
-		Process process = processRepository.findByProcessCode(request.getProcessCode())
-				.orElseThrow(() -> new IllegalArgumentException("Process not found: " + request.getProcessCode()));
-		productProcess = ProductProcess.builder()
-				.id(productProcess.getId())
-				.item(productProcess.getItem())
-				.process(process)
-				.parent(productProcess.getParent())
-				.processCode(request.getProcessCode())
-				.processName(request.getProcessName())
-				.processOrder(request.getProcessOrder())
-				.processTime(request.getProcessTime())
-				.isActive(request.getIsActive() != null ? request.getIsActive() : true)
-				.children(productProcess.getChildren())
-				.build();
-		ProductProcess saved = productProcessRepository.save(productProcess);
-		return toResponse(saved);
-	}
-
-	@Override
-	@Transactional
-	public void deleteProductProcess(Long id) {
-		productProcessRepository.deleteById(id);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public ProductProcessResponse getProductProcess(Long id) {
-		ProductProcess pp = productProcessRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("ProductProcess not found: " + id));
-		return toResponse(pp);
+		return responses;
 	}
 
 	@Override

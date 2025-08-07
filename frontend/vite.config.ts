@@ -21,12 +21,12 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     host: '0.0.0.0',
-    open: true,
+    open: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080', // 백엔드 서버 주소
+        target: 'http://backend:8080', // 백엔드 서버 주소
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ''),
       },

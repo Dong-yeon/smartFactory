@@ -27,7 +27,7 @@ public class Process {
 	@Column(name = "process_code", nullable = false, length = 50)
 	private String processCode;
 
-	@Column(name = "process_name", nullable = false, length = 50)
+	@Column(name = "process_name", nullable = false, length = 50, columnDefinition = "NVARCHAR(50)")
 	private String processName;
 
 	@Enumerated(EnumType.STRING)

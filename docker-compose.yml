@@ -5,25 +5,46 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+      - "5005:5005"   # 디버그 포트
     environment:
-      SPRING_DATASOURCE_URL: jdbc:sqlserver://db:1433;databaseName=${DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://mssql:1433;databaseName=${DB_NAME};encrypt=true;trustServerCertificate=true
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
     depends_on:
-      db:
-        condition: service_healthy
+      mssql:
+        condition: service_started
 
-  db:
+  mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: ${DB_PASSWORD}
       MSSQL_PID: Developer
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -U sa -P $$SA_PASSWORD -Q 'SELECT 1' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      MSSQL_TLS_ENFORCE: '0'
+    # healthcheck:
+    #   test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -U sa -P $$SA_PASSWORD -Q 'SELECT 1' || exit 1"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 10
     ports:
-      - "1433:1433"
+      - "14333:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./backend/db_init:/docker-entrypoint-initdb.d
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    depends_on:
+      - backend
+
+volumes:
+  mssql_data:

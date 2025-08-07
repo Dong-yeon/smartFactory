@@ -16,6 +16,11 @@ import java.util.List;
 public class ProductProcessRevisionController {
 	private final ProductProcessRevisionService productProcessRevisionService;
 
+	@GetMapping
+	public List<ProductProcessRevisionResponse> getByItemId(@RequestParam Long itemId) {
+		return productProcessRevisionService.getProductProcessRevisions(itemId);
+	}
+
 	@GetMapping("/{itemId}")
 	public List<ProductProcessRevisionResponse> getProductProcessRevisions(@PathVariable Long itemId) {
 		return productProcessRevisionService.getProductProcessRevisions(itemId);

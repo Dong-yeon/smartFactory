@@ -6,55 +6,31 @@ interface ItemGridProps {
     rowData: any[];
     gridViewRef: React.MutableRefObject<any>;
     dataProviderRef: React.MutableRefObject<any>;
-    processOptions: { value: string; label: string }[];
     containerId: string;
 }
 
-const ProductProcessGrid: React.FC<ItemGridProps> = ({
+const ProductProcessRevisionGrid: React.FC<ItemGridProps> = ({
                                                   rowData,
                                                   gridViewRef,
                                                   dataProviderRef,
-                                                  processOptions,
                                                   containerId
                                               }) => {
-    const processOptionsObj = React.useMemo(
-        () =>
-            processOptions.map(code =>
-            typeof code === "object"
-                ? { value: code.value, label: code.label }
-                : { value: code, label: code }
-            ),
-        [processOptions]
-        );
-
-    const processOptionsRef = React.useRef(processOptions);
-    React.useEffect(() => {
-        processOptionsRef.current = processOptions;
-    }, [processOptions]);
-    
     useEffect(() => {
         let rafId: number;
         let el = gridContainerRef.current;
         if (el && el.offsetWidth > 0 && el.offsetHeight > 0) {
             if (gridViewRef.current) {
-                gridViewRef.current.setColumn({
-                    name: 'processCode',
-                    editor: {
-                        type: 'dropdown',
-                        values: processOptionsObj.map(o => o.value),
-                        labels: processOptionsObj.map(o => o.label)
-                    }
-                });
                 return;
             }
             rafId = window.requestAnimationFrame(() => {
                 mountGridWhenReady();
+
             });
             return () => {
                 window.cancelAnimationFrame(rafId);
             };
         }
-    }, [rowData, processOptionsObj]);
+    }, [rowData]);
 
     const mountGridWhenReady = () => {
         const el = gridContainerRef.current;
@@ -79,12 +55,12 @@ const ProductProcessGrid: React.FC<ItemGridProps> = ({
                     // {name: 'id', fieldName: 'id', header: 'ID', width: 60, editable: false},
                     // {name: 'itemId', fieldName: 'itemId', header: '품목ID', width: 80, editable: false},
                     // {name: 'processId', fieldName: 'processId', header: '공정ID', width: 80, editable: false},
-                    {name: 'processCode', fieldName: 'processCode', header: '공정코드', width: 100},
-                    {name: 'processName', fieldName: 'processName', header: '공정명', width: 120, editable: false},
-                    {name: 'processOrder', fieldName: 'processOrder', header: '공정순서', width: 80},
-                    {name: 'processTime', fieldName: 'processTime', header: '공정시간', width: 80},
-                    // {name: 'revisionNo', fieldName: 'revisionNo', header: '리비전', width: 80},
-                    {name: 'isActive', fieldName: 'isActive', header: '사용여부', width: 80, renderer: { type: 'check', trueValues: 'true', falseValues: 'false' }},
+                    // {name: 'processCode', fieldName: 'processCode', header: '공정코드', width: 100},
+                    // {name: 'processName', fieldName: 'processName', header: '공정명', width: 120},
+                    // {name: 'processOrder', fieldName: 'processOrder', header: '공정순서', width: 80},
+                    // {name: 'processTime', fieldName: 'processTime', header: '공정시간', width: 80},
+                    {name: 'revisionNo', fieldName: 'revisionNo', header: '리비전', width: 80},
+                    // {name: 'isActive', fieldName: 'isActive', header: '사용여부', width: 80, renderer: { type: 'check', trueValues: 'true', falseValues: 'false' }},
                     // {name: 'createdAt', fieldName: 'createdAt', header: '생성일', width: 150, editable: false},
                     // {name: 'updatedAt', fieldName: 'updatedAt', header: '수정일', width: 150, editable: false},
                 ];
@@ -97,7 +73,7 @@ const ProductProcessGrid: React.FC<ItemGridProps> = ({
                 gridView.setColumns(columns);
                 gridView.displayOptions.fitStyle = "evenFill";
                 gridView.stateBar.visible = false; // 상태바(상태 아이콘) 숨김
-                gridView.checkBar.visible = true; // 체크바(체크 아이콘) 숨김
+                gridView.checkBar.visible = false; // 체크바(체크 아이콘) 숨김
 
                 gridViewRef.current = gridView;
                 dataProviderRef.current = dataProvider;
@@ -106,21 +82,6 @@ const ProductProcessGrid: React.FC<ItemGridProps> = ({
                     // id 컬럼값 직접 얻기
                     const id = gridView.getValue(checkedRow, "id");
                     if (id === undefined) return;
-                };
-
-                gridView.onCellEdited = function(grid, itemIndex, row, field) {
-                    if (field === 3) {
-                        const code = String(grid.getValue(itemIndex, 'processCode')).trim();
-                        const options = (processOptionsRef.current || []).map(code =>
-                            typeof code === "object"
-                                ? { value: code.value, label: code.label }
-                                : { value: code, label: code }
-                        );
-                        const option = options.find(o => String(o.value).trim() === code);
-                        if (option) {
-                            grid.setValue(itemIndex, 'processName', option.label);
-                        }
-                    }
                 };
             }
         }
@@ -141,4 +102,4 @@ const ProductProcessGrid: React.FC<ItemGridProps> = ({
     );
 };
 
-export default ProductProcessGrid;
+export default ProductProcessRevisionGrid;
